@@ -1,0 +1,70 @@
+#!/bin/bash
+#
+# CoreMemory — local database control.
+#
+# Runs a project-owned MariaDB instance on port 3307 as your own user.
+# No sudo, and it never touches XAMPP's MySQL on 3306, so you can run both.
+#
+#   ./scripts/db start     start it
+#   ./scripts/db stop      stop it
+#   ./scripts/db status    is it alive?
+#   ./scripts/db shell     open a SQL prompt
+#   ./scripts/db reset     DROP and recreate both databases (destructive)
+#
+set -euo pipefail
+
+XAMPP="/Applications/XAMPP/xamppfiles"
+ROOT="$HOME/.corememory"
+CNF="$ROOT/my.cnf"
+MYSQL="$XAMPP/bin/mysql --defaults-file=$CNF -u root"
+
+case "${1:-status}" in
+  start)
+    if "$XAMPP/bin/mysqladmin" --defaults-file="$CNF" -u root ping >/dev/null 2>&1; then
+      echo "already running on port 3307"; exit 0
+    fi
+    cd "$XAMPP"
+    nohup ./bin/mysqld_safe --defaults-file="$CNF" > "$ROOT/log/safe.log" 2>&1 &
+    for _ in $(seq 1 30); do
+      if "$XAMPP/bin/mysqladmin" --defaults-file="$CNF" -u root ping >/dev/null 2>&1; then
+        echo "MariaDB up on port 3307"; exit 0
+      fi
+      sleep 1
+    done
+    echo "failed to start — see $ROOT/log/error.log" >&2; exit 1
+    ;;
+
+  stop)
+    "$XAMPP/bin/mysqladmin" --defaults-file="$CNF" -u root shutdown && echo "stopped"
+    ;;
+
+  status)
+    if "$XAMPP/bin/mysqladmin" --defaults-file="$CNF" -u root ping >/dev/null 2>&1; then
+      echo "running on port 3307"
+    else
+      echo "not running — ./scripts/db start"; exit 1
+    fi
+    ;;
+
+  shell)
+    exec $MYSQL corememory
+    ;;
+
+  reset)
+    read -rp "This DROPS corememory and corememory_testing. Type yes: " ok
+    [ "$ok" = "yes" ] || { echo "aborted"; exit 1; }
+    $MYSQL -e "
+      DROP DATABASE IF EXISTS corememory;
+      DROP DATABASE IF EXISTS corememory_testing;
+      CREATE DATABASE corememory CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+      CREATE DATABASE corememory_testing CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+      GRANT ALL PRIVILEGES ON corememory.* TO 'corememory'@'127.0.0.1';
+      GRANT ALL PRIVILEGES ON corememory_testing.* TO 'corememory'@'127.0.0.1';
+      FLUSH PRIVILEGES;"
+    echo "databases recreated — now run: php artisan migrate:fresh --seed"
+    ;;
+
+  *)
+    echo "usage: ./scripts/db {start|stop|status|shell|reset}" >&2; exit 1
+    ;;
+esac

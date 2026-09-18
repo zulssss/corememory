@@ -1,0 +1,195 @@
+/* =============================================================================
+   COREMEMORY — DESIGN TOKENS
+   =============================================================================
+
+   THIS IS THE ONLY FILE THAT DEFINES COLOUR, TYPE, SPACING OR RADIUS.
+
+   Nothing in a Blade template, a component, or a JS file may contain a raw hex
+   value, a raw px font size, or a hardcoded font family. If you want to restyle
+   the entire site, you edit this file and nothing else.
+
+   Tailwind v4 note (why there is no tailwind.config.js):
+   Tailwind v4 is CSS-first. Everything inside `@theme` below is emitted as a
+   real CSS custom property AND generates matching utility classes. So
+   `--color-paper` here gives you `bg-paper`, `text-paper`, `border-paper`
+   automatically, and `var(--color-paper)` for anything hand-rolled.
+   ========================================================================== */
+
+@theme {
+  /* ---------------------------------------------------------------------
+     COLOUR
+     A near-monochrome editorial palette. One accent, used sparingly.
+     --------------------------------------------------------------------- */
+
+  /* Page surface — warm off-white, never pure #fff (pure white reads clinical
+     and blows out against photography). */
+  --color-paper: #f7f5f1;
+  --color-paper-raised: #fffefb;
+  --color-paper-sunken: #efece6;
+
+  /* Text — near-black, never pure #000 (pure black vibrates against warm
+     paper and crushes detail next to photographs). */
+  --color-ink: #141312;
+  --color-ink-soft: #3d3a36;
+  --color-ink-muted: #8a857d;
+  --color-ink-faint: #b3ada3;
+
+  /* Hairline rules and grid-cell borders — the primary structural device.
+     Thin and light. Never heavy. */
+  --color-rule: #e2ded7;
+  --color-rule-strong: #cdc7bd;
+
+  /* The single restrained accent. Warm clay — sits with the off-white paper
+     rather than fighting it. Used for links on hover, the active nav state,
+     and almost nothing else. */
+  --color-accent: #8c4b2f;
+  --color-accent-soft: #a9664a;
+
+  /* Inverted surface. The footer is a near-black band (per the reference
+     layout), so it needs its own token pair rather than a one-off hardcode —
+     that keeps the footer restyleable from this file like everything else. */
+  --color-inverse: #141312;
+  --color-inverse-raised: #211f1d;
+  --color-on-inverse: #f7f5f1;
+  --color-on-inverse-muted: #8a857d;
+  --color-inverse-rule: #2f2c29;
+
+  /* Status — admin and form feedback only. Never decorative. */
+  --color-positive: #3f6b4f;
+  --color-caution: #8a6a2f;
+  --color-critical: #8f3a32;
+
+  /* ---------------------------------------------------------------------
+     TYPEFACES
+     Two families, as briefed. A grotesque for everything, a mono for
+     micro-labels and metadata.
+     --------------------------------------------------------------------- */
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono",
+    Menlo, Consolas, monospace;
+
+  /* ---------------------------------------------------------------------
+     TYPE SCALE
+     Every size is fluid via clamp(), so nothing breaks between 360px and
+     1920px and there are no font-size breakpoints to maintain.
+     Format: clamp(min, preferred-with-viewport-unit, max)
+     --------------------------------------------------------------------- */
+
+  /* Micro-label: the tiny uppercase wide-tracked grey labels that carry most
+     of the site's structure (SELECTED WORK, COUPLE, DATE, VENUE, CREW). */
+  --text-micro: clamp(0.625rem, 0.6rem + 0.1vw, 0.6875rem); /* 10 → 11px */
+  --text-micro--line-height: 1.4;
+  --text-micro--letter-spacing: 0.14em;
+
+  --text-caption: clamp(0.6875rem, 0.66rem + 0.12vw, 0.75rem);
+  --text-caption--line-height: 1.5;
+  --text-caption--letter-spacing: 0.04em;
+
+  --text-body-sm: clamp(0.8125rem, 0.79rem + 0.12vw, 0.875rem);
+  --text-body-sm--line-height: 1.6;
+
+  --text-body: clamp(0.9375rem, 0.9rem + 0.2vw, 1.0625rem);
+  --text-body--line-height: 1.65;
+
+  --text-body-lg: clamp(1.0625rem, 1rem + 0.3vw, 1.25rem);
+  --text-body-lg--line-height: 1.6;
+
+  /* Section statements — large, tight leading, tight tracking. */
+  --text-statement: clamp(1.5rem, 1.1rem + 1.9vw, 2.75rem);
+  --text-statement--line-height: 1.18;
+  --text-statement--letter-spacing: -0.021em;
+
+  --text-statement-lg: clamp(1.875rem, 1.25rem + 3vw, 4rem);
+  --text-statement-lg--line-height: 1.08;
+  --text-statement-lg--letter-spacing: -0.026em;
+
+  /* Hero headline. */
+  --text-display: clamp(2.25rem, 1.3rem + 4.4vw, 5.5rem);
+  --text-display--line-height: 1.04;
+  --text-display--letter-spacing: -0.032em;
+
+  /* Big numerals as a design element — stat counters and 01–06 list numbers. */
+  --text-numeral: clamp(2.5rem, 1.4rem + 5vw, 6rem);
+  --text-numeral--line-height: 0.88;
+  --text-numeral--letter-spacing: -0.04em;
+
+  /* The giant footer wordmark, deliberately cropped by the viewport edge. */
+  --text-wordmark: clamp(4rem, -1rem + 22vw, 20rem);
+  --text-wordmark--line-height: 0.78;
+  --text-wordmark--letter-spacing: -0.045em;
+
+  /* ---------------------------------------------------------------------
+     TRACKING
+     --------------------------------------------------------------------- */
+  --tracking-micro: 0.14em;
+  --tracking-wide-label: 0.2em;
+  --tracking-tight: -0.021em;
+  --tracking-tighter: -0.032em;
+
+  /* ---------------------------------------------------------------------
+     SPACING
+     Tailwind's --spacing base drives the whole numeric scale (p-4, gap-8…).
+     The named steps below are for section rhythm — the heavy white space
+     the layout depends on.
+     --------------------------------------------------------------------- */
+  --spacing: 0.25rem;
+
+  --spacing-gutter: clamp(1.25rem, 0.8rem + 2vw, 3rem);
+  --spacing-section: clamp(4rem, 2.5rem + 7vw, 9rem);
+  --spacing-section-lg: clamp(6rem, 3rem + 11vw, 14rem);
+
+  /* ---------------------------------------------------------------------
+     LAYOUT
+     --------------------------------------------------------------------- */
+  --container-measure: 68ch; /* readable line length for long-form copy */
+  --container-page: 96rem; /* max page width before margins take over */
+
+  /* ---------------------------------------------------------------------
+     RADIUS
+     Near-zero. Sharp corners. The 1px value is deliberate, not a rounding
+     error — it takes the edge off inputs without reading as "rounded".
+     --------------------------------------------------------------------- */
+  --radius-none: 0px;
+  --radius-hair: 1px;
+  --radius-sm: 2px;
+
+  /* ---------------------------------------------------------------------
+     BORDER WIDTH — hairlines are the main structural device.
+     --------------------------------------------------------------------- */
+  --border-width-hair: 1px;
+
+  /* ---------------------------------------------------------------------
+     MOTION
+     Durations and easings live here too, so the whole site's motion
+     character is tunable from this one file. Consumed by motion.js via
+     getComputedStyle, so JS and CSS never drift apart.
+     --------------------------------------------------------------------- */
+  --ease-out-editorial: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out-editorial: cubic-bezier(0.65, 0, 0.35, 1);
+
+  --duration-fast: 200ms;
+  --duration-base: 420ms;
+  --duration-slow: 900ms;
+
+  /* Reveal-on-enter: how far text rises, and the stagger between siblings. */
+  --reveal-distance: 24px;
+  --reveal-stagger: 70ms;
+
+  /* Hero parallax: how far the background travels relative to scroll. */
+  --parallax-hero: 0.2;
+  --parallax-grid: 0.12;
+}
+
+/* =============================================================================
+   NON-TAILWIND TOKENS
+   Values that aren't utility-generating but still belong in one place.
+   ========================================================================== */
+:root {
+  /* Sticky header height — needed by scroll offsets and the mobile menu. */
+  --header-height: 4.25rem;
+
+  /* Corner crop marks on testimonial cards. */
+  --crop-mark-size: 10px;
+  --crop-mark-inset: -1px;
+}

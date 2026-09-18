@@ -1,0 +1,155 @@
+# CoreMemory
+
+Wedding photography and videography booking and portfolio platform for a
+Malaysian studio.
+
+Prices and packages are published openly so couples self-select. By the time an
+enquiry reaches the studio, the date, session slot, package and add-ons are
+already chosen — the team receives a structured quotation request instead of a
+cold "hi, berapa harga?".
+
+- **Public site** — portfolio, packages with real prices, availability checker,
+  booking wizard
+- **Admin panel** — Filament, built for a non-technical studio owner
+- **Invoicing** — deposit and final invoices as PDFs, with payment tracking
+- **Dashboard** — revenue, costs, gross profit and the enquiry→booking funnel
+
+> **Status:** Phase 1 of 5 complete (foundation). See the build phases at the
+> bottom of [CLAUDE.md](CLAUDE.md).
+
+---
+
+## Requirements
+
+| | |
+| --- | --- |
+| PHP | 8.4+ (8.2 minimum) |
+| Composer | 2.x |
+| Node | 20+ |
+| Database | MySQL 8 or MariaDB 10.4+ |
+
+**macOS with no PHP installed?** This one command installs PHP 8.4 and Composer
+with no GUI and no `sudo`:
+
+```bash
+/bin/bash -c "$(curl -fsSL https://php.new/install/mac/8.4)"
+```
+
+Then restart your terminal. If you have XAMPP, note its bundled PHP is **7.4 and
+will not run this project** — the command above installs a separate, newer PHP
+and puts it first on your PATH.
+
+---
+
+## Setup
+
+```bash
+# 1. Get the code and its dependencies
+git clone <repo-url> corememory
+cd corememory
+composer install
+npm install
+
+# 2. Create your environment file and app key
+cp .env.example .env
+php artisan key:generate
+
+# 3. Start the database, then create the schema and demo data
+./scripts/db start
+php artisan migrate:fresh --seed
+
+# 4. Link storage so uploaded images are publicly reachable
+php artisan storage:link
+
+# 5. Build the frontend
+npm run build
+```
+
+Then run the app — **two terminals**:
+
+```bash
+npm run dev          # terminal 1 — rebuilds CSS/JS as you edit
+php artisan serve    # terminal 2 — serves the app
+```
+
+Open <http://localhost:8000>.
+
+### Database setup
+
+`./scripts/db start` runs a MariaDB instance that belongs to this project, on
+port **3307**, under your own user account — no `sudo`, and it does not disturb
+XAMPP's MySQL on 3306.
+
+```bash
+./scripts/db start     # start
+./scripts/db stop      # stop
+./scripts/db status    # check
+./scripts/db shell     # open a SQL prompt
+./scripts/db reset     # drop and recreate both databases (destructive)
+```
+
+**Prefer XAMPP?** Start MySQL from its control panel and set `DB_PORT=3306` plus
+your XAMPP credentials in `.env`. Nothing else changes.
+
+### Admin panel
+
+<http://localhost:8000/admin>
+
+| Email | Role | Password |
+| --- | --- | --- |
+| `super@corememory.test` | `super_admin` | `password` |
+| `owner@corememory.test` | `admin` | `password` |
+| `staff@corememory.test` | `staff` | `password` |
+
+Seeded demo accounts, local only. Never use these in production.
+
+### Emails
+
+`MAIL_MAILER=log` locally, so nothing is actually sent. Emails are written to
+`storage/logs/laravel.log` where you can read them.
+
+---
+
+## Everyday commands
+
+```bash
+php artisan test              # run the test suite
+./vendor/bin/pint             # format PHP (run before committing)
+php artisan migrate:fresh --seed   # rebuild the database from scratch
+php artisan queue:work        # process queued emails and PDF generation
+php artisan tinker            # interactive REPL
+```
+
+---
+
+## Troubleshooting
+
+**`php -v` shows 7.4** — XAMPP is ahead on your PATH:
+
+```bash
+export PATH="$HOME/.config/herd-lite/bin:$PATH"
+```
+
+**`SQLSTATE[HY000] [2002] Connection refused`** — the database isn't running:
+
+```bash
+./scripts/db start
+```
+
+**Page loads but has no styling** — assets aren't built. Run `npm run dev` (or
+`npm run build`).
+
+**Page is blank with JS disabled or the bundle fails** — by design the page
+falls back to plain readable HTML after ~2.5s. If it stays blank, check the
+browser console for a JS error.
+
+---
+
+## Documentation
+
+**[CLAUDE.md](CLAUDE.md)** is the developer guide: stack decisions and their
+reasoning, folder and naming conventions, the theming system, the motion rules,
+how money is handled, **how the availability engine prevents double bookings**,
+and how to add a package, a project or an invoice.
+
+Read the Availability section before changing anything booking-related.
