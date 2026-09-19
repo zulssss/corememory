@@ -1,25 +1,43 @@
 {{--
-    A wedding story in the SELECTED WORK grid: parallax image, caption label
-    beneath.
+    A wedding story in a portfolio grid: parallax image, caption beneath.
 
-    Phase 1 renders placeholders. Phase 2 passes a real Project model.
+    Pass a Project model and everything is derived from it:
+        <x-project-card :project="$project" ratio="4/5" :intensity="0.16" />
+
+    Or pass plain props for non-project cards (e.g. journal entries).
 --}}
 @props([
+    'project' => null,
     'title' => null,
     'category' => null,
     'href' => null,
     'ratio' => '3/2',
     'intensity' => 0.12,
-    'src' => null,
+    'media' => null,
+    'eager' => false,
 ])
 
+@php
+    $title ??= $project?->title;
+    $category ??= $project?->category?->label();
+    $href ??= $project ? route('work.show', $project) : '#';
+    $media ??= $project?->getFirstMedia('hero');
+@endphp
+
 <article {{ $attributes->class('group') }}>
-    <a href="{{ $href ?? '#' }}"
+    <a href="{{ $href }}"
        data-cursor="{{ __('site.cta.view') }}"
        class="block focus-visible:outline-offset-4">
 
         <x-reveal type="image" class="block overflow-hidden">
-            <x-parallax-image :ratio="$ratio" :intensity="$intensity" :label="$title" :src="$src" :alt="$title ?? ''" />
+            <x-parallax-image
+                :ratio="$ratio"
+                :intensity="$intensity"
+                :media="$media"
+                :label="$title"
+                :alt="$title ? __('site.media.alt_project', ['title' => $title]) : ''"
+                :eager="$eager"
+                sizes="(min-width: 768px) 33vw, 100vw" />
         </x-reveal>
 
         <div class="mt-3 flex items-baseline justify-between gap-4">

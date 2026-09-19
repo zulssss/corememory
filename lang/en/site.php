@@ -46,6 +46,26 @@ return [
 
     'media' => [
         'placeholder' => 'Placeholder',
+        'alt_project' => 'Photograph from :title',
+        'alt_bts' => 'Behind the scenes with the CoreMemory team',
+    ],
+
+    'categories' => [
+        'wedding' => 'Wedding',
+        'pre_wedding' => 'Pre-wedding',
+        'nikah' => 'Nikah',
+        'engagement' => 'Engagement',
+        'video' => 'Video',
+    ],
+
+    'work' => [
+        'headline' => 'Every wedding we have photographed, in full.',
+        'meta_description' => 'Wedding, nikah, pre-wedding and engagement photography from CoreMemory, across Malaysia.',
+        'filter_label' => 'Filter by category',
+        'all' => 'All',
+        'empty' => 'No stories published in this category yet.',
+        'next' => 'Next story',
+        'previous' => 'Previous story',
     ],
 
     'meta' => [

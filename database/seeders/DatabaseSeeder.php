@@ -16,8 +16,11 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
-            RoleSeeder::class,       // Phase 1 — roles + one demo user each
-            // Phase 2 — SettingsSeeder, ProjectSeeder, TestimonialSeeder, PostSeeder
+            RoleSeeder::class,          // Phase 1 — roles + one demo user each
+            SettingsSeeder::class,      // Phase 2 — owner-editable site content
+            ProjectSeeder::class,       //           portfolio + placeholder media
+            TestimonialSeeder::class,   //           linked to the seeded projects
+            PostSeeder::class,          //           journal
             // Phase 3 — PackageSeeder, AddOnSeeder, BookingSeeder
             // Phase 4 — InvoiceSeeder, PaymentSeeder, BookingCostSeeder
         ]);

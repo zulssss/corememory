@@ -8,17 +8,16 @@
 
     `intensity` varies the travel so a grid of these doesn't move as one flat
     plane. Parallax is dropped entirely under 768px and under reduced motion.
-
-    Usage:
-        <x-parallax-image ratio="3/2" intensity="0.18" label="Aisyah & Danial" />
 --}}
 @props([
     'ratio' => '3/2',
     'intensity' => 0.12,
     'tone' => 'sunken',
     'label' => null,
-    'src' => null,
+    'media' => null,
     'alt' => '',
+    'eager' => false,
+    'sizes' => '(min-width: 768px) 50vw, 100vw',
 ])
 
 <div
@@ -28,9 +27,8 @@
 >
     {{-- scale-110 gives the transform room to travel without revealing a gap --}}
     <div class="h-full w-full scale-110">
-        @if ($src)
-            <img src="{{ $src }}" alt="{{ $alt }}" loading="lazy" decoding="async"
-                 class="h-full w-full object-cover">
+        @if ($media)
+            <x-responsive-image :media="$media" :ratio="$ratio" :alt="$alt" :eager="$eager" :sizes="$sizes" />
         @else
             <x-placeholder-image :ratio="$ratio" :tone="$tone" :label="$label" />
         @endif

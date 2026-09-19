@@ -103,6 +103,11 @@ is deliberate — see [Testing](#testing).
 `spatie/laravel-sluggable`, `spatie/laravel-sitemap`, `barryvdh/laravel-dompdf`,
 `pestphp/pest`.
 
+Added in Phase 2: `filament/spatie-laravel-media-library-plugin` — the official
+Filament adapter for medialibrary, version-locked to `filament/support`
+(`self.version`), so it is effectively part of Filament rather than a new
+dependency. Without it every resource needs hand-rolled upload-to-media sync.
+
 **Adding anything else requires justifying it to the project owner first.**
 (`laravel/boost` was deliberately not installed for this reason.)
 
@@ -241,6 +246,49 @@ protected function casts(): array
 
 `percent()` rounds half-up, so a deposit and its balance always add back to
 exactly the total.
+
+---
+
+## Caching
+
+**Never put an Eloquent model or collection into the cache.**
+
+This is not a style preference. Serialising models and reading them back throws
+`The script tried to call a method on an incomplete object` at *render* time —
+a 500 in production, from code that looks completely fine in review. It bit this
+project once already; `PortfolioTest` has a regression test that fails if
+anything but a primitive crosses the cache boundary.
+
+The pattern to follow — see `HomeController`:
+
+1. Cache the **selection**: record ids, ordering, and any computed numbers.
+2. Hydrate the models fresh with a `whereIn` lookup, eager-loading relations.
+
+Ids are ints, so they serialise safely, and the expensive part (the filtering
+and ordering logic) is still cached. Hydration is an indexed primary-key
+lookup.
+
+`App\Support\Settings` additionally memoises per request, so reading twenty
+settings on one page is one cache round trip, not twenty.
+
+**Busting:** `App\Observers\FlushesPublicCache` is registered on Project,
+Testimonial, Post and Setting in `AppServiceProvider`. An owner who saves in the
+admin must see the change on the site immediately — not after the TTL. If you
+add a model whose content appears on a cached page, register it there too.
+
+### N+1
+
+`Model::preventLazyLoading()` is on in local development, so a missing
+`with()` throws instead of quietly costing a query per row. Current cost:
+
+| Page | Data queries |
+| --- | --- |
+| Home (warm cache) | 5 |
+| `/work` | 5 |
+| `/work/{slug}` | 8 |
+
+Locally, `CACHE_STORE` and `SESSION_DRIVER` are `database`, so query logs also
+show cache and session traffic. Those become Redis on the VPS.
 
 ---
 
@@ -391,7 +439,7 @@ immutability after lock · profit and margin calculation · ageing buckets.
 
 - **Phase 0** — environment ✅
 - **Phase 1** — foundation: tokens, motion, layout, components, roles ✅
-- **Phase 2** — content & portfolio: models, media, Filament resources, full homepage, `/work`
+- **Phase 2** — content & portfolio: models, media, Filament resources, full homepage, `/work` ✅
 - **Phase 3** — packages, availability engine, booking wizard, emails, tests
 - **Phase 4** — invoicing, payments, costs, profit dashboard
 - **Phase 5** — about, contact, journal, SEO, performance, accessibility, deploy notes
