@@ -247,6 +247,22 @@ protected function casts(): array
 `percent()` rounds half-up, so a deposit and its balance always add back to
 exactly the total.
 
+### Two rules that exist because they were learned the hard way
+
+**1. The cast implements `SerializesCastableAttributes`.** Without that,
+`attributesToArray()` hands back the `Money` OBJECT. Filament fills a form from
+every attribute, so the object lands in Livewire's state and the edit page dies
+with *"Property type not supported in Livewire"* — even for columns with no form
+field, where no `formatStateUsing` can intercept it. `serialize()` keeps arrays
+and JSON as plain integer cents while `$booking->deposit_cents->format()` still
+works.
+
+**2. Admin money fields use `App\Filament\Forms\Components\MoneyInput`,
+never a hand-rolled `TextInput`.** Filament's `->numeric()` installs a state
+cast that runs `floatval()` on the value *before* `formatStateUsing` sees it,
+which is fatal on a value object. `MoneyInput` validates with `->rule('numeric')`
+instead, and is the single place the ringgit ↔ cents conversion lives.
+
 ---
 
 ## Caching
@@ -351,6 +367,14 @@ No advisory locking, no `SELECT ... FOR UPDATE` race window.
 Two admins confirming different bookings onto the same slot at the same instant:
 exactly one succeeds.
 
+### Never assign `$booking->status` directly
+
+Use `App\Actions\Bookings\ChangeBookingStatus` (or `ConfirmBooking` /
+`ReleaseBooking`). Assigning the status changes the badge in the UI and leaves
+`slot_holds` untouched — so a cancelled wedding keeps its Saturday forever, or
+a confirmed one never reserves it. The admin panel's status field is
+deliberately read-only for this reason.
+
 ### A request is not a confirmation
 
 Say it in the UI and say it in the emails. A submitted booking is `pending`. The
@@ -423,9 +447,15 @@ shipped.
 Most tests use `RefreshDatabase`, which rolls back per test — so **seeded roles
 are gone**; call `$this->seed(RoleSeeder::class)` when a test needs them.
 
-**Phase 3 note:** the concurrent double-booking tests must **not** use
-`RefreshDatabase`. They need two genuinely separate connections committing
-against the same table, so they opt into `DatabaseTruncation` instead.
+**`tests/Concurrency/`** is its own suite using `DatabaseTruncation`, because
+the double-booking tests need two genuinely separate connections committing
+against each other — `RefreshDatabase` wraps everything in one transaction, so a
+second connection would not see the writes and the test would pass for the
+wrong reason.
+
+**Always test Filament *edit* pages, not just index and create.** Edit is the
+only place a form hydrates an existing record, and both Money bugs above were
+invisible until it was tested.
 
 Required coverage: booking creation · concurrent-confirm double-booking
 prevention · full-day vs slot matrix · admin block vs booking · window
@@ -440,7 +470,7 @@ immutability after lock · profit and margin calculation · ageing buckets.
 - **Phase 0** — environment ✅
 - **Phase 1** — foundation: tokens, motion, layout, components, roles ✅
 - **Phase 2** — content & portfolio: models, media, Filament resources, full homepage, `/work` ✅
-- **Phase 3** — packages, availability engine, booking wizard, emails, tests
+- **Phase 3** — packages, availability engine, booking wizard, emails, tests ✅
 - **Phase 4** — invoicing, payments, costs, profit dashboard
 - **Phase 5** — about, contact, journal, SEO, performance, accessibility, deploy notes
 

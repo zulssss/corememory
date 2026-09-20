@@ -135,6 +135,28 @@ return [
         'from' => 'From',
         'popular' => 'Most popular',
         'on_request' => 'On request',
+
+        'headline' => 'Our prices, in full, with nothing held back.',
+        'meta_description' => 'Wedding photography packages and prices in Malaysia. Every price, inclusion and add-on published openly.',
+        'intro' => 'Every package below shows what it costs and exactly what is included. You should never have to send a message to find out a price.',
+
+        'whats_included' => 'What is included',
+        'included' => 'Included',
+        'not_included' => 'Not included',
+        'compare' => 'Compare packages',
+        'add_ons' => 'Add-ons',
+        'add_ons_intro' => 'Add any of these to any package. Prices are per booking unless stated otherwise.',
+        'each' => 'each',
+        'up_to' => 'up to :max',
+
+        'coverage' => 'Coverage',
+        'hours' => ':count hours',
+        'choose' => 'Choose this package',
+
+        'deposit_note' => 'A :percent% deposit confirms your date. The balance is due before the event.',
+
+        'honest_note_label' => 'What can change a quote',
+        'honest_note' => 'Three things move a price: how far we travel, how much of the day we cover, and whether your date falls in a peak period. Everything above assumes travel within the Klang Valley. Tell us your date and venue and we will confirm the exact figure — no obligation, and no pressure.',
     ],
 
     'sections' => [

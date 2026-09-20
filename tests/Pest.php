@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Models\User;
+use Illuminate\Foundation\Testing\DatabaseTruncation;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -24,6 +25,17 @@ pest()->extend(TestCase::class)
     ->in('Feature');
 
 pest()->extend(TestCase::class)->in('Unit');
+
+/*
+ * Concurrency tests prove the double-booking guarantee, which means two
+ * connections must genuinely commit against each other. RefreshDatabase wraps
+ * each test in a single transaction — a second connection would not see those
+ * writes at all, and the test would pass for the wrong reason. Truncation
+ * gives real commits.
+ */
+pest()->extend(TestCase::class)
+    ->use(DatabaseTruncation::class)
+    ->in('Concurrency');
 
 /*
 |------------------------------------------------------------------------------

@@ -110,6 +110,15 @@ return [
     |
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | Studio notification address
+    |--------------------------------------------------------------------------
+    | Where new booking enquiries are sent. Falls back to the admin Settings
+    | value first, then this, then the from address.
+    */
+    'studio_address' => env('STUDIO_NOTIFICATION_EMAIL'),
+
     'from' => [
         'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),

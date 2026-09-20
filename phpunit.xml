@@ -11,6 +11,14 @@
         <testsuite name="Feature">
             <directory>tests/Feature</directory>
         </testsuite>
+        <!--
+            Concurrency tests need two real database connections committing
+            against each other, so they cannot run inside RefreshDatabase's
+            wrapping transaction. They truncate instead. See tests/Pest.php.
+        -->
+        <testsuite name="Concurrency">
+            <directory>tests/Concurrency</directory>
+        </testsuite>
     </testsuites>
     <source>
         <include>

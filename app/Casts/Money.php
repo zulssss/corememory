@@ -6,6 +6,7 @@ namespace App\Casts;
 
 use App\ValueObjects\Money as MoneyValue;
 use Illuminate\Contracts\Database\Eloquent\CastsAttributes;
+use Illuminate\Contracts\Database\Eloquent\SerializesCastableAttributes;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -24,7 +25,7 @@ use Illuminate\Database\Eloquent\Model;
  *
  * @implements CastsAttributes<MoneyValue|null, MoneyValue|int|float|string|null>
  */
-final class Money implements CastsAttributes
+final class Money implements CastsAttributes, SerializesCastableAttributes
 {
     public function get(Model $model, string $key, mixed $value, array $attributes): ?MoneyValue
     {
@@ -40,5 +41,24 @@ final class Money implements CastsAttributes
         // Accepts a Money object or a raw integer of cents. A float is treated
         // as cents too, not ringgit — use Money::fromRinggit() to convert.
         return $value instanceof MoneyValue ? $value->cents : (int) $value;
+    }
+
+    /**
+     * How this value appears in toArray() / toJson().
+     *
+     * Without this, attributesToArray() hands back the Money OBJECT, which
+     * then ends up in Livewire's component state — and Livewire cannot
+     * serialise an arbitrary value object, so any Filament edit form
+     * containing a money column dies with
+     * "Property type not supported in Livewire".
+     *
+     * It bites even on columns with no form field (subtotal_cents), because
+     * Filament fills the form from every attribute, so there is no
+     * formatStateUsing to intercept it. Fixing it here fixes every model at
+     * once, and keeps API/JSON output as plain integer cents.
+     */
+    public function serialize(Model $model, string $key, mixed $value, array $attributes): ?int
+    {
+        return $value instanceof MoneyValue ? $value->cents : $value;
     }
 }

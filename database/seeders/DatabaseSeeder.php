@@ -21,7 +21,9 @@ class DatabaseSeeder extends Seeder
             ProjectSeeder::class,       //           portfolio + placeholder media
             TestimonialSeeder::class,   //           linked to the seeded projects
             PostSeeder::class,          //           journal
-            // Phase 3 — PackageSeeder, AddOnSeeder, BookingSeeder
+            PackageSeeder::class,       // Phase 3 — pricing
+            AddOnSeeder::class,
+            BookingSeeder::class,       //           demo enquiries across the funnel
             // Phase 4 — InvoiceSeeder, PaymentSeeder, BookingCostSeeder
         ]);
     }
