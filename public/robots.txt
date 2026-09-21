@@ -1,2 +1,16 @@
+# CoreMemory
+
 User-agent: *
-Disallow:
+Allow: /
+
+# Application steps, not content. Indexing them competes with /packages and
+# surfaces half-finished flows in search results.
+Disallow: /book
+Disallow: /book/
+Disallow: /availability
+
+# Admin and signed client downloads are never for crawlers.
+Disallow: /admin
+Disallow: /invoices/
+
+Sitemap: /sitemap.xml

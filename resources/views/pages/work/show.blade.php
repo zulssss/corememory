@@ -6,6 +6,15 @@
 <x-layouts.app
     :title="$project->title.' — '.__('site.brand.name')"
     :description="$project->excerpt"
+    og-type="article"
+    :schema="[
+        App\Support\Seo::project($project),
+        App\Support\Seo::breadcrumbs([
+            __('site.nav.home') => route('home'),
+            __('site.nav.work') => route('work'),
+            $project->title => route('work.show', $project),
+        ]),
+    ]"
 >
 
     {{-- Hero --}}

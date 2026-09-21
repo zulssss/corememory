@@ -2,10 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\Public\AboutController;
 use App\Http\Controllers\Public\AvailabilityController;
 use App\Http\Controllers\Public\BookingController;
+use App\Http\Controllers\Public\ContactController;
 use App\Http\Controllers\Public\HomeController;
+use App\Http\Controllers\Public\JournalController;
 use App\Http\Controllers\Public\PackageController;
+use App\Http\Controllers\Public\SitemapController;
 use App\Http\Controllers\Public\WorkController;
 use App\Livewire\BookingWizard;
 use Illuminate\Support\Facades\Route;
@@ -17,10 +21,7 @@ use Illuminate\Support\Facades\Route;
 | Everything a couple sees. Split out of web.php (a pattern borrowed from the
 | ceritaconvo repo) so the public site and the admin surface stay legible as
 | separate concerns as they grow.
-|
-| Placeholder routes below render a clearly-labelled holding page so the header
-| and footer navigation is genuinely clickable while the site is built out.
-| Each is annotated with the phase that replaces it.
+
 */
 
 Route::get('/', HomeController::class)->name('home');
@@ -39,16 +40,19 @@ Route::get('/availability', AvailabilityController::class)->name('availability')
 Route::get('/book', BookingWizard::class)->name('book');
 Route::get('/book/thank-you/{reference}', [BookingController::class, 'thanks'])->name('book.thanks');
 
-/** @var array<string, string> Placeholder routes, with the phase that fills them in. */
-$upcoming = [
-    'about' => 'Phase 5',
-    'journal' => 'Phase 5',
-    'contact' => 'Phase 5',
-];
+// About, journal and contact — Phase 5
+Route::get('/about', AboutController::class)->name('about');
 
-foreach ($upcoming as $slug => $phase) {
-    Route::get("/{$slug}", fn () => view('pages.placeholder', [
-        'pageTitle' => ucfirst($slug),
-        'phase' => $phase,
-    ]))->name($slug);
-}
+Route::get('/journal', [JournalController::class, 'index'])->name('journal');
+Route::get('/journal/{post}', [JournalController::class, 'show'])->name('journal.show');
+
+Route::get('/contact', [ContactController::class, 'show'])->name('contact');
+
+// Rate limited: a contact form is the easiest thing on a site to abuse, and
+// the honeypot alone only stops the lazy bots.
+Route::post('/contact', [ContactController::class, 'store'])
+    ->middleware('throttle:6,60')
+    ->name('contact.store');
+
+// SEO
+Route::get('/sitemap.xml', SitemapController::class)->name('sitemap');

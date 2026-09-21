@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\ProjectCategory;
+use App\Support\Lqip;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -97,6 +98,16 @@ class Project extends Model implements HasMedia
             ->format('webp')
             ->quality(78)
             ->nonQueued();   // admin list thumbnails must exist immediately
+
+        // A 24px blurred placeholder, inlined as a data URI while the real
+        // image loads. nonQueued so it exists the moment the upload finishes —
+        // a placeholder that arrives after the photograph is pointless.
+        $this->addMediaConversion(Lqip::CONVERSION)
+            ->fit(Fit::Max, 24, 24)
+            ->blur(6)
+            ->format('webp')
+            ->quality(40)
+            ->nonQueued();
 
         $this->addMediaConversion('grid')
             ->fit(Fit::Max, 900, 1200)

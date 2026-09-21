@@ -31,19 +31,32 @@
      paper and crushes detail next to photographs). */
   --color-ink: #141312;
   --color-ink-soft: #3d3a36;
-  --color-ink-muted: #8a857d;
-  --color-ink-faint: #b3ada3;
+
+  /* Contrast-checked against --color-paper. The micro-labels that carry most
+     of this site's structure are 10–11px, which WCAG counts as small text and
+     so requires 4.5:1. The original #8a857d measured 3.36:1 and failed. */
+  --color-ink-muted: #6f6a62;   /* 4.93:1 — micro-labels, secondary copy */
+  --color-ink-faint: #8f8a81;   /* 3.15:1 — DECORATIVE ONLY, never body text */
 
   /* Hairline rules and grid-cell borders — the primary structural device.
      Thin and light. Never heavy. */
-  --color-rule: #e2ded7;
+  --color-rule: #e2ded7;        /* 1.23:1 — decorative dividers only */
   --color-rule-strong: #cdc7bd;
+
+  /* Form control borders are NOT decorative: they are how you find the field.
+     WCAG 1.4.11 wants 3:1 for that, which no hairline grey reaches — so
+     inputs get a visibly darker edge. It reads slightly heavier than the
+     dividers, and that is the correct trade. */
+  --color-input-border: #8f8a81;   /* 3.15:1 */
 
   /* The single restrained accent. Warm clay — sits with the off-white paper
      rather than fighting it. Used for links on hover, the active nav state,
      and almost nothing else. */
-  --color-accent: #8c4b2f;
-  --color-accent-soft: #a9664a;
+  --color-accent: #8c4b2f;      /* 6.10:1 on paper */
+
+  /* Used for links on the near-black footer, so it is checked against
+     --color-inverse rather than paper. #a9664a measured 4.14:1 and failed. */
+  --color-accent-soft: #bd7a5c;  /* 5.39:1 on inverse */
 
   /* Inverted surface. The footer is a near-black band (per the reference
      layout), so it needs its own token pair rather than a one-off hardcode —

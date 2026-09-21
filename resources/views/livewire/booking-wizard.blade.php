@@ -107,7 +107,7 @@
                                 <input type="text" wire:model.blur="dates.{{ $index }}.label"
                                        placeholder="{{ __('booking.wizard.date_label_hint') }}"
                                        aria-label="{{ __('booking.fields.label') }}"
-                                       class="mt-3 w-full border border-rule bg-paper px-3 py-2 text-body-sm text-ink placeholder:text-ink-faint focus:border-ink">
+                                       class="mt-3 w-full border border-input-border bg-paper px-3 py-2 text-body-sm text-ink placeholder:text-ink-faint focus:border-ink">
                             @endif
                         </div>
                     @endforeach
@@ -224,7 +224,7 @@
                             <label class="flex flex-col gap-1.5">
                                 <x-micro-label>{{ __('booking.fields.'.$key) }}</x-micro-label>
                                 <input type="text" wire:model.blur="dates.{{ $activeDate }}.{{ $field }}"
-                                       class="border border-rule bg-paper px-3 py-2 text-body-sm text-ink focus:border-ink">
+                                       class="border border-input-border bg-paper px-3 py-2 text-body-sm text-ink focus:border-ink">
                             </label>
                         @endforeach
                     </div>
@@ -382,7 +382,7 @@
                                    @class([
                                        'border bg-paper px-3 py-2.5 text-body text-ink focus:border-ink',
                                        'border-critical' => $errors->has($model),
-                                       'border-rule' => ! $errors->has($model),
+                                       'border-input-border' => ! $errors->has($model),
                                    ])>
 
                             @error($model)
@@ -394,13 +394,13 @@
                     <label class="flex flex-col gap-1.5">
                         <x-micro-label>{{ __('booking.fields.guest_count') }}</x-micro-label>
                         <input type="number" min="1" wire:model.blur="guestCount"
-                               class="border border-rule bg-paper px-3 py-2.5 text-body text-ink focus:border-ink">
+                               class="border border-input-border bg-paper px-3 py-2.5 text-body text-ink focus:border-ink">
                     </label>
 
                     <label class="flex flex-col gap-1.5">
                         <x-micro-label>{{ __('booking.fields.source') }}</x-micro-label>
                         <select wire:model.blur="source"
-                                class="border border-rule bg-paper px-3 py-2.5 text-body text-ink focus:border-ink">
+                                class="border border-input-border bg-paper px-3 py-2.5 text-body text-ink focus:border-ink">
                             <option value="">—</option>
                             @foreach ($sources as $sourceOption)
                                 <option value="{{ $sourceOption->value }}">{{ $sourceOption->label() }}</option>
@@ -411,7 +411,7 @@
                     <label class="flex flex-col gap-1.5 sm:col-span-2">
                         <x-micro-label>{{ __('booking.fields.notes') }}</x-micro-label>
                         <textarea wire:model.blur="notes" rows="4"
-                                  class="border border-rule bg-paper px-3 py-2.5 text-body text-ink focus:border-ink"></textarea>
+                                  class="border border-input-border bg-paper px-3 py-2.5 text-body text-ink focus:border-ink"></textarea>
                     </label>
                 </div>
             @endif

@@ -26,6 +26,14 @@
         </include>
     </source>
     <php>
+        <!--
+            Image conversions (media library + image-optimizer) hold whole
+            bitmaps in memory, and the performance tests attach real files.
+            PHP's 128M default is not enough and the suite dies mid-run with a
+            fatal that looks unrelated to the test that triggered it.
+        -->
+        <ini name="memory_limit" value="512M"/>
+
         <env name="APP_ENV" value="testing"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>

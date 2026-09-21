@@ -1,3 +1,10 @@
+@props([
+    'title' => null,
+    'description' => null,
+    'ogType' => 'website',
+    'schema' => [],
+    'noindex' => false,
+])
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
@@ -7,6 +14,15 @@
 
     <title>{{ $title ?? config('app.name') }}</title>
     <meta name="description" content="{{ $description ?? __('site.meta.default_description') }}">
+
+    {{-- Canonical, Open Graph, Twitter card and JSON-LD. Pages pass their own
+         schema block through $schema; LocalBusiness is emitted site-wide. --}}
+    <x-seo
+        :title="$title ?? null"
+        :description="$description ?? null"
+        :type="$ogType ?? 'website'"
+        :schema="$schema ?? []"
+        :noindex="$noindex ?? false" />
 
     {{--
         Set data-motion BEFORE first paint so reveal targets are already hidden

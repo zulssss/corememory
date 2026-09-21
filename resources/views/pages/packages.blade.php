@@ -9,6 +9,13 @@
 <x-layouts.app
     :title="__('site.nav.packages').' — '.__('site.brand.name')"
     :description="__('site.packages.meta_description')"
+    :schema="[
+        App\Support\Seo::services($packages),
+        App\Support\Seo::breadcrumbs([
+            __('site.nav.home') => route('home'),
+            __('site.nav.packages') => route('packages'),
+        ]),
+    ]"
 >
 
     {{-- Intro --}}

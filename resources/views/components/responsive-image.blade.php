@@ -20,7 +20,14 @@
 ])
 
 @php
+    use App\Support\Lqip;
+
     [$rw, $rh] = array_map('intval', explode('/', $ratio));
+
+    // The blurred placeholder sits behind the image as a background, so there
+    // is never an empty grey box — the photograph fades in over a blurred
+    // version of itself.
+    $placeholder = Lqip::dataUri($media);
     // Nominal intrinsic size at the right aspect ratio. The browser only needs
     // the RATIO to reserve the box correctly, not the true pixel dimensions.
     $width = 1200;
@@ -40,6 +47,9 @@
         loading="{{ $eager ? 'eager' : 'lazy' }}"
         {{ $eager ? 'fetchpriority=high' : '' }}
         decoding="async"
+        @if ($placeholder)
+            style="background-image: url('{{ $placeholder }}'); background-size: cover; background-position: center;"
+        @endif
         {{ $attributes->class('h-full w-full object-cover') }}
     >
 @else

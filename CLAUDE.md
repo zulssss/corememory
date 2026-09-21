@@ -278,6 +278,32 @@ instead, and is the single place the ringgit ↔ cents conversion lives.
 
 ---
 
+## Accessibility
+
+Colour tokens are **contrast-checked, not eyeballed**. Three originals failed
+WCAG and were corrected:
+
+| Token | Was | Now | Why |
+| --- | --- | --- | --- |
+| `--color-ink-muted` | 3.36:1 | **4.93:1** | Micro-labels are 10–11px — small text, needs 4.5:1 |
+| `--color-ink-faint` | 2.05:1 | **3.15:1** | Decorative only; never body text |
+| `--color-accent-soft` | 4.14:1 | **5.39:1** | Footer links, checked against the *inverse* surface |
+
+`--color-input-border` exists separately from `--color-rule` because a form
+control's edge is how you find the field (WCAG 1.4.11, 3:1) while a divider is
+decorative. Inputs therefore look slightly heavier than the hairlines, and that
+is correct.
+
+**If you add a colour, check it against the surface it sits on** — and against
+`--color-inverse` if it appears in the footer.
+
+Also enforced: one `<h1>` per page, no heading-level skips, `alt` on every
+image, `aria-describedby` linking form errors to their input, a skip link, and
+`aria-current` on active navigation. `ContentPagesTest` fails if any of that
+regresses.
+
+---
+
 ## Caching
 
 **Never put an Eloquent model or collection into the cache.**
@@ -561,7 +587,7 @@ call, which means they ship green and break five minutes later.
 - **Phase 2** — content & portfolio: models, media, Filament resources, full homepage, `/work` ✅
 - **Phase 3** — packages, availability engine, booking wizard, emails, tests ✅
 - **Phase 4** — invoicing, payments, costs, profit dashboard ✅
-- **Phase 5** — about, contact, journal, SEO, performance, accessibility, deploy notes
+- **Phase 5** — about, contact, journal, SEO, performance, accessibility, deploy notes ✅
 
 Placeholder routes in `routes/public.php` are annotated with the phase that
 replaces them.

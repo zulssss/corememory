@@ -14,8 +14,8 @@ cold "hi, berapa harga?".
 - **Invoicing** — deposit and final invoices as PDFs, with payment tracking
 - **Dashboard** — revenue, costs, gross profit and the enquiry→booking funnel
 
-> **Status:** Phase 1 of 5 complete (foundation). See the build phases at the
-> bottom of [CLAUDE.md](CLAUDE.md).
+> **Status:** all five phases complete. See [CLAUDE.md](CLAUDE.md) for the
+> developer guide and [DEPLOYMENT.md](DEPLOYMENT.md) for the VPS setup.
 
 ---
 
@@ -145,11 +145,39 @@ browser console for a JS error.
 
 ---
 
+## What's in it
+
+| | |
+| --- | --- |
+| `/` | Homepage — hero, portfolio, packages with prices, stats, testimonials |
+| `/work`, `/work/{slug}` | Portfolio, filterable by category |
+| `/packages` | Every price and inclusion, published openly |
+| `/availability` | Standalone date checker |
+| `/book` | The booking wizard — date first, live clash detection |
+| `/about`, `/journal`, `/contact` | Studio, writing, and a contact form |
+| `/admin` | Filament: bookings, calendar, packages, invoices, content, settings |
+| `/admin/finance-dashboard` | Revenue, costs, profit, receivables, funnel |
+
+## Testing
+
+```bash
+php artisan test                        # everything
+php artisan test --testsuite=Concurrency  # the double-booking guarantees
+./vendor/bin/pint                       # format
+```
+
+Tests run against the `corememory_testing` MySQL database, not SQLite — the
+availability guarantee is a real unique index and MySQL error 1062. See
+[CLAUDE.md](CLAUDE.md) § Testing.
+
 ## Documentation
 
-**[CLAUDE.md](CLAUDE.md)** is the developer guide: stack decisions and their
-reasoning, folder and naming conventions, the theming system, the motion rules,
-how money is handled, **how the availability engine prevents double bookings**,
-and how to add a package, a project or an invoice.
+**[CLAUDE.md](CLAUDE.md)** — the developer guide: stack decisions and their
+reasoning, folder and naming conventions, the theming system, motion rules, how
+money is handled, **how the availability engine prevents double bookings**,
+invoicing, the finance dashboard, and how to add a package, project or invoice.
+
+**[DEPLOYMENT.md](DEPLOYMENT.md)** — Ubuntu VPS setup: Nginx, PHP-FPM, MySQL,
+Redis, the Supervisor queue worker, the scheduler cron, deploys and backups.
 
 Read the Availability section before changing anything booking-related.
