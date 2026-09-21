@@ -247,6 +247,19 @@ protected function casts(): array
 `percent()` rounds half-up, so a deposit and its balance always add back to
 exactly the total.
 
+### Never `->sum('money_column')` on a Collection
+
+`$invoice->payments->sum('amount_cents')` pulls the CAST attribute — a `Money`
+object — and tries to add objects together. Fatal. Always sum `->cents`
+explicitly:
+
+```php
+$this->payments->sum(fn (Payment $p) => $p->amount_cents->cents);
+```
+
+Query-builder sums (`Payment::sum('amount_cents')`) are fine — those happen in
+SQL and never touch the cast.
+
 ### Two rules that exist because they were learned the hard way
 
 **1. The cast implements `SerializesCastableAttributes`.** Without that,
@@ -286,6 +299,13 @@ lookup.
 
 `App\Support\Settings` additionally memoises per request, so reading twenty
 settings on one page is one cache round trip, not twenty.
+
+**The finance dashboard is the exception to busting.** `FinanceReport` caches
+with a 5-minute TTL and no explicit invalidation. Not every cache driver
+supports tags, so the only way to clear those keys by hand is `Cache::flush()`,
+which would also throw away the homepage payload and settings on every recorded
+payment. A revenue figure five minutes stale is fine; punishing the public site
+for it is not.
 
 **Busting:** `App\Observers\FlushesPublicCache` is registered on Project,
 Testimonial, Post and Setting in `AppServiceProvider`. An owner who saves in the
@@ -408,6 +428,71 @@ Admin → Projects → New. Couple names, category, date, venue, crew, gallery
 Images go through medialibrary with thumbnail/grid/full WebP conversions and the
 original preserved.
 
+---
+
+## Invoicing
+
+An invoice is a **snapshot, not a view**. Line items are copied at the prices
+captured when the couple booked, and client details are copied too — correcting
+a booking must never rewrite an invoice already sitting in someone's inbox.
+
+**Deposit and final reconcile.** Both carry the full scope as line items, plus
+one negative deduction line:
+
+| Deposit | | Final | |
+| --- | ---: | --- | ---: |
+| Package | 6,800.00 | Package | 6,800.00 |
+| Extra hour ×3 | 1,350.00 | Extra hour ×3 | 1,350.00 |
+| *Less: balance after event* | −5,705.00 | *Less: deposit invoiced* | −2,445.00 |
+| **Due now** | **2,445.00** | **Due** | **5,705.00** |
+
+The two always add back to the contract value, so the studio can hand a client
+both documents and the arithmetic holds. This is why invoice money columns are
+**signed** integers.
+
+**Locking.** Line items are editable only while `status` is `draft`. Issuing
+sets `locked_at` and the form goes read-only — once a client holds a PDF, the
+numbers behind it must stop moving.
+
+**Overdue is computed, never stored.** A stored flag needs a nightly job to stay
+true and is wrong for every hour between the due date passing and that job
+running. See `Invoice::isOverdue()`.
+
+**Client downloads** use a signed, expiring URL with no login — a couple opens
+it from an email and has no account. The signature is the protection: the URL
+can't be produced by walking invoice ids. PDFs live on the private `local` disk
+and are streamed, never exposed under `public/`.
+
+**Why dompdf.** An invoice is a letterhead and a bordered table — no flexbox, no
+grid, no JS. dompdf is pure PHP, so the VPS needs no headless Chromium (~400 MB
+plus a class of queue-worker failures) for a document that renders fine without
+it. The PDF template is the one deliberate exception to the no-hex rule: dompdf
+can't resolve CSS custom properties, so it carries its own palette block
+mirroring `tokens.css`.
+
+---
+
+## The finance dashboard
+
+`App\Services\FinanceReport` computes every figure, and exists to enforce two
+things:
+
+1. **Invoiced is not collected.** An invoice raised is not money in the bank.
+   Every revenue figure declares its basis — *cash* (payments received) or
+   *accrual* (invoices issued) — and the dashboard prints which one is active
+   next to the number.
+2. **Aggregate in SQL.** Nothing loads a collection of models and loops it.
+
+Receivables deliberately **ignore the date filter**: money owed from four months
+ago is still owed today, and hiding it behind a period is how it gets forgotten.
+
+Direct costs are dated by the **event**, not by when the row was entered, so a
+cost keyed in late still lands in the month the work happened.
+
+The funnel counts **cumulatively** — a completed booking was also once confirmed
+— otherwise every earlier stage is understated and conversion looks worse than
+it was.
+
 ### Generate an invoice
 
 Admin → Bookings → open one → **Generate deposit invoice**. After the event,
@@ -463,6 +548,10 @@ enforcement · validation failures · price calculation with quantified add-ons 
 reference sequencing · invoice numbering under concurrency · snapshot
 immutability after lock · profit and margin calculation · ageing buckets.
 
+**Always test Filament *edit* pages** (see above) **and always exercise a cached
+read twice.** Object-serialisation bugs in the cache only appear on the second
+call, which means they ship green and break five minutes later.
+
 ---
 
 ## Build phases
@@ -471,7 +560,7 @@ immutability after lock · profit and margin calculation · ageing buckets.
 - **Phase 1** — foundation: tokens, motion, layout, components, roles ✅
 - **Phase 2** — content & portfolio: models, media, Filament resources, full homepage, `/work` ✅
 - **Phase 3** — packages, availability engine, booking wizard, emails, tests ✅
-- **Phase 4** — invoicing, payments, costs, profit dashboard
+- **Phase 4** — invoicing, payments, costs, profit dashboard ✅
 - **Phase 5** — about, contact, journal, SEO, performance, accessibility, deploy notes
 
 Placeholder routes in `routes/public.php` are annotated with the phase that

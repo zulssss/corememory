@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Bookings\Schemas;
 
 use App\Enums\BookingStatus;
+use App\Enums\CostCategory;
 use App\Enums\EnquirySource;
 use App\Enums\SessionSlot;
 use App\Filament\Forms\Components\MoneyInput;
@@ -14,6 +15,7 @@ use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
@@ -101,6 +103,39 @@ class BookingForm
                         MoneyInput::make('estimated_total_cents', 'Estimated total'),
 
                         MoneyInput::make('deposit_cents', 'Deposit'),
+                    ]),
+
+                Section::make('Direct costs')
+                    ->description('What this booking costs the studio to deliver. Profit is meaningless without these — revenue alone only says how busy you are.')
+                    ->schema([
+                        Repeater::make('costs')
+                            ->relationship()
+                            ->hiddenLabel()
+                            ->columns(4)
+                            ->schema([
+                                Select::make('category')
+                                    ->options(CostCategory::class)
+                                    ->required()
+                                    ->native(false)
+                                    ->live()
+                                    // Pre-fill the label from the category so
+                                    // the common case is one click.
+                                    ->afterStateUpdated(fn ($state, $set) => $set(
+                                        'label',
+                                        $state ? CostCategory::from($state)->label() : null,
+                                    )),
+
+                                TextInput::make('label')->required(),
+
+                                MoneyInput::make('amount_cents', 'Amount')->required(),
+
+                                Toggle::make('is_paid')
+                                    ->label('Paid out')
+                                    ->inline(false),
+                            ])
+                            ->addActionLabel('Add a cost')
+                            ->reorderable()
+                            ->defaultItems(0),
                     ]),
 
                 Section::make('Notes')

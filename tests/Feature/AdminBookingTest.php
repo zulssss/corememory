@@ -7,9 +7,11 @@ use App\Actions\Bookings\ConfirmBooking;
 use App\Enums\BookingStatus;
 use App\Enums\SessionSlot;
 use App\Exceptions\SlotUnavailableException;
+use App\Filament\Pages\FinanceDashboard;
 use App\Filament\Resources\AddOns\AddOnResource;
 use App\Filament\Resources\BlockedDates\BlockedDateResource;
 use App\Filament\Resources\Bookings\BookingResource;
+use App\Filament\Resources\Invoices\InvoiceResource;
 use App\Filament\Resources\Packages\PackageResource;
 use App\Filament\Resources\Posts\PostResource;
 use App\Filament\Resources\Projects\ProjectResource;
@@ -163,5 +165,30 @@ describe('permissions', function () {
         $this->actingAs($staff)
             ->get(BookingResource::getUrl('index'))
             ->assertOk();
+    });
+});
+
+describe('finance is owner-only', function () {
+    it('keeps staff out of invoices and the finance dashboard', function () {
+        $staff = User::factory()->create();
+        $staff->assignRole('staff');
+        $this->actingAs($staff);
+
+        // Staff work bookings, not the books.
+        expect(InvoiceResource::canAccess())->toBeFalse()
+            ->and(FinanceDashboard::canAccess())->toBeFalse();
+    });
+
+    it('lets the owner into invoices and the finance dashboard', function () {
+        $this->actingAs($this->owner);
+
+        expect(InvoiceResource::canAccess())->toBeTrue()
+            ->and(FinanceDashboard::canAccess())->toBeTrue();
+    });
+
+    it('loads the finance dashboard', function () {
+        $this->actingAs($this->owner);
+
+        $this->get(FinanceDashboard::getUrl())->assertOk();
     });
 });

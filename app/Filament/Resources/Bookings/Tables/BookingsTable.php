@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Bookings\Tables;
 
 use App\Actions\Bookings\ChangeBookingStatus;
+use App\Actions\Invoices\GenerateInvoice;
 use App\Enums\BookingStatus;
 use App\Enums\EnquirySource;
+use App\Enums\InvoiceType;
 use App\Exceptions\SlotUnavailableException;
 use App\Filament\Actions\ExportBookingsCsv;
+use App\Filament\Resources\Invoices\InvoiceResource;
 use App\Models\Booking;
 use App\Models\Package;
 use Filament\Actions\Action;
@@ -127,6 +130,7 @@ class BookingsTable
                     EditAction::make(),
 
                     self::statusAction(),
+                    self::generateInvoiceAction(),
                     self::whatsappAction(),
 
                     Action::make('email')
@@ -198,6 +202,45 @@ class BookingsTable
                     ->success()
                     ->title('Status updated')
                     ->body('This booking is now '.$status->label().'.')
+                    ->send();
+            });
+    }
+
+    /**
+     * One click from a booking to an invoice.
+     *
+     * Idempotent: asking twice for the deposit invoice opens the existing one
+     * rather than issuing a second number. The Action decides that, not this
+     * button, so the same guarantee holds however the invoice is created.
+     */
+    public static function generateInvoiceAction(): Action
+    {
+        return Action::make('generateInvoice')
+            ->label('Generate invoice')
+            ->icon('heroicon-o-document-plus')
+            ->schema([
+                Select::make('type')
+                    ->label('Which invoice?')
+                    ->options(InvoiceType::options())
+                    ->default(InvoiceType::Deposit->value)
+                    ->required()
+                    ->native(false)
+                    ->helperText('The deposit confirms the date. The final invoice covers the balance after the event.'),
+            ])
+            // Money is the owner's business, not the whole team's.
+            ->visible(fn () => auth()->user()?->hasAnyRole(['super_admin', 'admin']) ?? false)
+            ->action(function (Booking $record, array $data): void {
+                $invoice = app(GenerateInvoice::class)
+                    ->handle($record, InvoiceType::from($data['type']));
+
+                Notification::make()->success()
+                    ->title('Invoice '.$invoice->number)
+                    ->body('Created as a draft — review it, then send it when you are ready.')
+                    ->actions([
+                        Action::make('open')
+                            ->label('Open invoice')
+                            ->url(InvoiceResource::getUrl('edit', ['record' => $invoice])),
+                    ])
                     ->send();
             });
     }

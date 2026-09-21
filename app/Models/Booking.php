@@ -80,6 +80,57 @@ class Booking extends Model
         return $this->hasMany(BookingNote::class)->latest();
     }
 
+    public function invoices(): HasMany
+    {
+        return $this->hasMany(Invoice::class)->orderBy('issued_at');
+    }
+
+    /** What this booking cost the studio to deliver. */
+    public function costs(): HasMany
+    {
+        return $this->hasMany(BookingCost::class);
+    }
+
+    /**
+     * Total direct costs.
+     *
+     * Summed via a closure on ->cents: with the Money cast, sum('amount_cents')
+     * would add Money OBJECTS and fatal. See Invoice::paid().
+     */
+    public function totalCosts(): Money
+    {
+        return new Money((int) $this->costs->sum(fn (BookingCost $cost) => $cost->amount_cents->cents));
+    }
+
+    /**
+     * Gross profit against COLLECTED revenue, not invoiced.
+     *
+     * An invoice nobody has paid is not profit, however good it looks on the
+     * booking. The dashboard can show the accrual view separately.
+     */
+    public function grossProfit(): Money
+    {
+        return $this->collectedRevenue()->minus($this->totalCosts());
+    }
+
+    /** Money actually received against this booking's invoices. */
+    public function collectedRevenue(): Money
+    {
+        return new Money((int) $this->invoices->sum(fn (Invoice $i) => $i->paid()->cents));
+    }
+
+    /** Margin as a percentage of collected revenue. Null when nothing collected. */
+    public function grossMarginPercent(): ?float
+    {
+        $revenue = $this->collectedRevenue();
+
+        if ($revenue->isZero()) {
+            return null;
+        }
+
+        return round($this->grossProfit()->cents / $revenue->cents * 100, 1);
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Scopes

@@ -24,7 +24,7 @@ class DatabaseSeeder extends Seeder
             PackageSeeder::class,       // Phase 3 — pricing
             AddOnSeeder::class,
             BookingSeeder::class,       //           demo enquiries across the funnel
-            // Phase 4 — InvoiceSeeder, PaymentSeeder, BookingCostSeeder
+            FinanceSeeder::class,       // Phase 4 — invoices, payments, direct costs
         ]);
     }
 }

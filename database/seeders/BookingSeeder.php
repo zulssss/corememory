@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Actions\Bookings\CalculateQuote;
 use App\Actions\Bookings\ConfirmBooking;
 use App\Actions\Bookings\CreateBooking;
 use App\Enums\BookingStatus;
@@ -13,6 +14,7 @@ use App\Models\AddOn;
 use App\Models\BlockedDate;
 use App\Models\Booking;
 use App\Models\Package;
+use App\Models\Sequence;
 use App\Models\SlotHold;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Seeder;
@@ -123,7 +125,104 @@ class BookingSeeder extends Seeder
             $this->applyStatus($booking, $index, $confirm);
         }
 
+        $this->seedHistory($packages, $addOns);
         $this->seedBlockedDates();
+    }
+
+    /**
+     * Completed weddings across the last 12 months.
+     *
+     * The dashboard's headline chart is revenue vs cost vs profit over 12
+     * months, and its seasonality view is bookings by month. Neither shows
+     * anything if every seeded wedding is in the future — the demo data needs
+     * a past as well as a diary.
+     *
+     * These are built DIRECTLY rather than through CreateBooking, and that is
+     * deliberate. CreateBooking refuses a date in the past, which is exactly
+     * right for a booking funnel — you cannot book last March. Back-filling a
+     * completed job is a different operation, so it does not pretend to be one.
+     * The reference still comes from the sequence and the totals still come
+     * from CalculateQuote, so the records are indistinguishable otherwise.
+     *
+     * Completed does not hold a slot, so these never collide with the upcoming
+     * bookings above.
+     */
+    private function seedHistory($packages, $addOns): void
+    {
+        if ($packages->isEmpty()) {
+            return;
+        }
+
+        $calculateQuote = app(CalculateQuote::class);
+
+        $couples = [
+            ['Lina', 'Haziq'], ['Yasmin', 'Rizal'], ['Ain', 'Shahrul'],
+            ['Kavitha', 'Suresh'], ['Belinda', 'Jun Hao'], ['Nadia', 'Firdaus'],
+            ['Suhana', 'Azlan'], ['Rachel', 'Daniel'], ['Zara', 'Imran'],
+            ['Alia', 'Haikal'], ['Serena', 'Kai'], ['Maya', 'Arif'],
+            ['Dina', 'Rashid'], ['Elena', 'Wei Jie'], ['Nur', 'Syazwan'],
+            ['Tania', 'Vikram'], ['Sofia', 'Zaki'], ['Hana', 'Luqman'],
+        ];
+
+        foreach ($couples as $index => [$one, $two]) {
+            $eventDate = CarbonImmutable::today()
+                ->subMonths(12)
+                ->addDays((int) round($index * (365 / count($couples))));
+
+            $package = $packages[$index % $packages->count()];
+
+            $chosen = [];
+            foreach ($addOns->random(min(2, $addOns->count())) as $addOn) {
+                $chosen[$addOn->getKey()] = $addOn->is_quantifiable ? random_int(1, 3) : 1;
+            }
+
+            $quote = $calculateQuote->handle($package, $chosen);
+            $year = (int) $eventDate->year;
+
+            $booking = Booking::create([
+                'reference' => sprintf(
+                    '%s-%d-%s',
+                    config('booking.reference_prefix'),
+                    $year,
+                    str_pad((string) Sequence::next('booking', $year), 4, '0', STR_PAD_LEFT),
+                ),
+                'package_id' => $package->getKey(),
+                'partner_one_name' => $one,
+                'partner_two_name' => $two,
+                'email' => strtolower($one).'@example.test',
+                'phone' => '01'.random_int(1, 9).'-'.random_int(200, 999).' '.random_int(1000, 9999),
+                'guest_count' => random_int(80, 600),
+                'source' => $this->source($index),
+                'subtotal_cents' => $quote->subtotal,
+                'addons_total_cents' => $quote->addOnsTotal,
+                'estimated_total_cents' => $quote->total,
+                'deposit_cents' => $quote->deposit,
+                'status' => BookingStatus::Completed,
+            ]);
+
+            // Enquired a few months before the wedding, so the funnel and the
+            // seasonality view both read correctly.
+            $booking->forceFill([
+                'created_at' => $eventDate->subMonths(random_int(3, 9)),
+            ])->save();
+
+            $booking->dates()->create([
+                'event_date' => $eventDate,
+                'session_slot' => SessionSlot::FullDay,
+                'label' => 'Wedding',
+                'venue' => 'Dewan Placeholder',
+                'city' => 'Kuala Lumpur',
+                'state' => 'Wilayah Persekutuan',
+            ]);
+
+            foreach ($quote->lines as $line) {
+                $booking->addOns()->attach($line->addOn->getKey(), [
+                    'qty' => $line->qty,
+                    'price_cents_at_booking' => $line->unitPrice->cents,
+                    'line_total_cents' => $line->lineTotal->cents,
+                ]);
+            }
+        }
     }
 
     /**
