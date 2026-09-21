@@ -10,6 +10,7 @@ use App\Actions\Invoices\SendInvoice;
 use App\Enums\InvoiceStatus;
 use App\Enums\InvoiceType;
 use App\Enums\PaymentMethod;
+use App\Jobs\RenderInvoicePdfJob;
 use App\Mail\InvoiceMail;
 use App\Models\AddOn;
 use App\Models\Booking;
@@ -17,6 +18,7 @@ use App\Models\BookingDate;
 use App\Models\Invoice;
 use App\Models\Package;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 
 beforeEach(function () {
@@ -328,14 +330,14 @@ describe('sending', function () {
 
 describe('queued work', function () {
     it('queues the PDF render when an invoice is issued', function () {
-        Illuminate\Support\Facades\Queue::fake();
+        Queue::fake();
 
         app(IssueInvoice::class)->handle(
             app(GenerateInvoice::class)->handle($this->booking, InvoiceType::Deposit)
         );
 
         // The request must never wait on PDF generation.
-        Illuminate\Support\Facades\Queue::assertPushed(App\Jobs\RenderInvoicePdfJob::class);
+        Queue::assertPushed(RenderInvoicePdfJob::class);
     });
 
     it('renders on demand when the queued file is not there yet', function () {
