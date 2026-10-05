@@ -1,0 +1,38 @@
+/* =============================================================================
+   FILAMENT ADMIN THEME
+   =============================================================================
+
+   WHY THIS FILE EXISTS
+
+   Filament ships a PRE-COMPILED stylesheet containing only the utility classes
+   its own components happen to use. That is fine until a panel has custom Blade
+   views — ours has three (calendar, sales & profit, settings) — because their
+   classes were never seen by any Tailwind build. `grid-cols-7`, `min-h-24`,
+   `justify-end` and the rest simply did not exist, so those pages rendered as
+   unstyled stacked text while the rest of the panel looked fine.
+
+   Registering a theme means Tailwind scans OUR files and compiles OUR classes.
+   The @source lines below are the scan list. Add one if custom admin markup
+   ever lives somewhere new.
+
+   This is separate from resources/css/app.css on purpose: the public site's
+   editorial palette has no business overriding Filament's admin UI, and
+   Filament's reset has no business touching the public site.
+   ========================================================================== */
+
+@import '../../../../vendor/filament/filament/resources/css/theme.css';
+
+@source '../../../../app/Filament/**/*';
+@source '../../../../resources/views/filament/**/*';
+
+/* -----------------------------------------------------------------------------
+   Tabular numerals for admin figures.
+
+   Money and counts sit in columns that are read by scanning down, so digits
+   must occupy equal width — otherwise "RM 21,985" and "RM 8,265" fail to line
+   up and comparing them takes real effort.
+   -------------------------------------------------------------------------- */
+.fi-ta-text-item-label,
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}

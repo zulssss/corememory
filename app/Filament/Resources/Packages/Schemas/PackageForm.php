@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Packages\Schemas;
 
+use App\Enums\PackageCategory;
 use App\Filament\Forms\Components\MoneyInput;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -22,6 +24,17 @@ class PackageForm
                     ->columns(2)
                     ->schema([
                         TextInput::make('name')->required()->maxLength(120)->columnSpanFull(),
+
+                        // Required: the packages page and the booking wizard both
+                        // group by category, so a package without one would be
+                        // published at a price and still never be shown.
+                        Select::make('category')
+                            ->options(collect(PackageCategory::ordered())
+                                ->mapWithKeys(fn (PackageCategory $c) => [$c->value => $c->label()]))
+                            ->required()
+                            ->native(false)
+                            ->helperText('Which tab this package appears under on the website.')
+                            ->columnSpanFull(),
 
                         MoneyInput::make('price_cents', 'Price')->required(),
 

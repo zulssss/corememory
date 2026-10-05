@@ -16,4 +16,10 @@ class ListTestimonials extends ListRecords
             CreateAction::make(),
         ];
     }
+
+    /** Says plainly what the homepage does with this list. */
+    public function getSubheading(): ?string
+    {
+        return 'Every published testimonial appears on the homepage, in this order. Drag to reorder.';
+    }
 }

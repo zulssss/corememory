@@ -6,7 +6,13 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
     plugins: [
         laravel({
-            input: ['resources/css/app.css', 'resources/js/app.js'],
+            input: [
+                'resources/css/app.css',
+                'resources/js/app.js',
+                // The admin panel compiles its own stylesheet — see the header
+                // comment in theme.css for why it cannot share app.css.
+                'resources/css/filament/admin/theme.css',
+            ],
             refresh: true,
             // Two families only, as briefed: a grotesque for everything and a
             // mono for micro-labels. Served from our own origin at build time

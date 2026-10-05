@@ -31,6 +31,10 @@ class AdminPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Amber,
             ])
+            // Without this the panel serves Filament's pre-compiled CSS, which
+            // only contains the classes Filament's own components use — so every
+            // custom page (calendar, sales & profit, settings) renders unstyled.
+            ->viteTheme('resources/css/filament/admin/theme.css')
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages;
 
+use App\Filament\Forms\Components\MoneyInput;
 use App\Support\Settings;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -135,13 +136,8 @@ class ManageSettings extends Page implements HasSchemas
                         ->icon(Heroicon::OutlinedCalendarDays)
                         ->schema([
                             Section::make()->schema([
-                                TextInput::make('booking__deposit_percent')
-                                    ->label('Deposit percentage')
-                                    ->numeric()
-                                    ->suffix('%')
-                                    ->minValue(0)
-                                    ->maxValue(100)
-                                    ->helperText('Used to work out the deposit on quotes and invoices.'),
+                                MoneyInput::make('booking__deposit_per_event_cents', 'Deposit per event')
+                                    ->helperText('A flat amount per event, not a percentage. A booking covering a solemnisation and a reception pays this twice.'),
                                 Textarea::make('booking__payment_terms')->label('Payment terms')->rows(3),
                                 Textarea::make('booking__cancellation_policy')->label('Cancellation policy')->rows(3),
                             ]),

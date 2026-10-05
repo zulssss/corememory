@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Packages\Tables;
 
+use App\Enums\PackageCategory;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -21,6 +22,11 @@ class PackagesTable
             ->reorderable('sort_order')
             ->columns([
                 TextColumn::make('name')->searchable()->sortable()->weight('medium'),
+
+                TextColumn::make('category')
+                    ->formatStateUsing(fn (?PackageCategory $state) => $state?->label() ?? '—')
+                    ->badge()
+                    ->sortable(),
 
                 TextColumn::make('price_cents')
                     ->label('Price')

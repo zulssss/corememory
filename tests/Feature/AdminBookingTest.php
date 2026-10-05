@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Actions\Bookings\ChangeBookingStatus;
 use App\Actions\Bookings\ConfirmBooking;
 use App\Enums\BookingStatus;
+use App\Enums\PackageCategory;
 use App\Enums\SessionSlot;
 use App\Exceptions\SlotUnavailableException;
 use App\Filament\Pages\FinanceDashboard;
@@ -13,6 +14,8 @@ use App\Filament\Resources\BlockedDates\BlockedDateResource;
 use App\Filament\Resources\Bookings\BookingResource;
 use App\Filament\Resources\Invoices\InvoiceResource;
 use App\Filament\Resources\Packages\PackageResource;
+use App\Filament\Resources\Packages\Pages\CreatePackage;
+use App\Filament\Resources\Packages\Pages\EditPackage;
 use App\Filament\Resources\Posts\PostResource;
 use App\Filament\Resources\Projects\ProjectResource;
 use App\Filament\Resources\Testimonials\TestimonialResource;
@@ -27,6 +30,7 @@ use App\Models\SlotHold;
 use App\Models\Testimonial;
 use App\Models\User;
 use Database\Seeders\RoleSeeder;
+use Livewire\Livewire;
 
 beforeEach(function () {
     $this->seed(RoleSeeder::class);
@@ -76,6 +80,32 @@ describe('resource pages', function () {
         [Testimonial::class, TestimonialResource::class],
         [Post::class, PostResource::class],
     ]);
+});
+
+describe('package categories', function () {
+    /*
+     * The packages page and the booking wizard both group by category. A
+     * package saved without one would be published at a price and never
+     * shown anywhere, so the admin form refuses it.
+     */
+    it('requires a category when creating a package', function () {
+        Livewire::test(CreatePackage::class)
+            ->fillForm(['name' => 'Uncategorised', 'price_cents' => 900])
+            ->call('create')
+            ->assertHasFormErrors(['category' => 'required']);
+    });
+
+    it('saves the chosen category', function () {
+        $package = Package::factory()->create(['category' => PackageCategory::Photo]);
+
+        Livewire::test(EditPackage::class, ['record' => $package->getRouteKey()])
+            ->assertFormSet(['category' => 'photo'])
+            ->fillForm(['category' => 'session'])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        expect($package->fresh()->category)->toBe(PackageCategory::Session);
+    });
 });
 
 describe('changing status keeps the calendar in step', function () {

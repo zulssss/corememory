@@ -49,7 +49,7 @@ class TestimonialForm
                         TextInput::make('sort_order')
                             ->numeric()
                             ->default(0)
-                            ->helperText('Lower numbers appear first.'),
+                            ->helperText('Every published testimonial appears on the homepage. Lower numbers appear first — or drag to reorder in the list.'),
 
                         Toggle::make('is_published')
                             ->label('Published')
