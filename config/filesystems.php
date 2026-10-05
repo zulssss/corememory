@@ -28,6 +28,20 @@ return [
     |
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | Private documents disk
+    |--------------------------------------------------------------------------
+    |
+    | Invoice PDFs and payment receipts: never web-servable. "local" on a single
+    | server; a PRIVATE object-storage bucket on hosts whose filesystem does
+    | not survive a deploy (Laravel Cloud). Everything that reads or writes
+    | those documents asks for this disk by name.
+    |
+    */
+
+    'private_disk' => env('PRIVATE_DISK', 'local'),
+
     'disks' => [
 
         'local' => [
@@ -36,6 +50,24 @@ return [
             'serve' => true,
             'throw' => false,
             'report' => false,
+        ],
+
+        /*
+         * Media uploaded by tests. It exists so the suite NEVER writes into —
+         * or deletes from — storage/app/public, where the studio's real
+         * photographs live.
+         *
+         * Without it the two share one folder, and because the testing
+         * database's media ids restart at 1 after a refresh they collide with
+         * real media ids: running the suite silently destroys uploaded
+         * photographs. Wired up by MEDIA_DISK in phpunit.xml.
+         */
+        'media_testing' => [
+            'driver' => 'local',
+            'root' => storage_path('framework/testing/media'),
+            'url' => env('APP_URL').'/storage',
+            'visibility' => 'public',
+            'throw' => false,
         ],
 
         'public' => [

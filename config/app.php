@@ -42,6 +42,12 @@ return [
     'debug' => (bool) env('APP_DEBUG', false),
 
     /*
+    | Keep this copy out of search engines (X-Robots-Tag). For review and
+    | staging deployments. See App\Http\Middleware\NoIndexWhenRequested.
+    */
+    'noindex' => (bool) env('SITE_NOINDEX', false),
+
+    /*
     |--------------------------------------------------------------------------
     | Application URL
     |--------------------------------------------------------------------------

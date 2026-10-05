@@ -21,6 +21,23 @@ sudo apt install -y nginx mysql-server redis-server supervisor unzip git \
 `php8.4-gd` is not optional — image conversions and the placeholder generator
 both need it.
 
+**Raise the upload limits before the studio touches the admin.** PHP's defaults
+(`upload_max_filesize=2M`, `post_max_size=8M`) reject a file in the SAPI, before
+Laravel boots, so an oversized wedding photograph surfaces as a bare "Error
+during upload" with no reason. The admin form offers 12 MB:
+
+```bash
+sudo tee /etc/php/8.4/fpm/conf.d/99-corememory.ini > /dev/null <<'INI'
+upload_max_filesize = 24M
+post_max_size = 32M
+memory_limit = 512M
+INI
+
+sudo systemctl restart php8.4-fpm
+```
+
+Nginx has its own ceiling too — `client_max_body_size` in step 4.
+
 Composer:
 
 ```bash
@@ -378,3 +395,79 @@ php artisan queue:retry all
 
 **Invoice PDFs fail** — check `php8.4-gd` is installed and `storage/app/private`
 is writable by `www-data`.
+
+---
+
+# Alternative: Laravel Cloud (review / staging)
+
+Laravel Cloud runs the app from the GitHub repo with managed MySQL and object
+storage — no server to look after. Used for the partner-review copy.
+
+**Cloud servers keep no files between deploys.** Everything the app writes to
+disk therefore lives in object storage, chosen by environment variable:
+
+| What | Setting | Locally | On Cloud |
+| --- | --- | --- | --- |
+| Photos (portfolio, journal) | `MEDIA_DISK` | `public` | the **public** bucket's disk name |
+| Invoice PDFs, payment receipts | `PRIVATE_DISK` | `local` | the **private** bucket's disk name |
+
+Nothing in the code names a disk directly — it all reads those two settings.
+
+## 1. Create the app
+
+1. Sign up at <https://cloud.laravel.com> — **check the current pricing first**.
+2. Connect GitHub and create an application from `zulssss/corememory`, branch `main`.
+3. Attach a **MySQL** database. Cloud fills in the `DB_*` variables itself.
+4. Attach **two object-storage buckets**:
+   - one **public** (photos must be viewable by visitors)
+   - one **private** (invoices and receipts must never be)
+
+   Note the **disk name** Cloud shows for each — you need them in step 3.
+
+## 2. Build and deploy commands
+
+```
+Build:   composer install --no-dev --optimize-autoloader && npm ci && npm run build
+Deploy:  php artisan migrate --force
+```
+
+Keep it to **one replica**: Livewire stores an upload temporarily on the
+server that received it, and a second replica could receive the save.
+
+## 3. Environment variables
+
+```ini
+APP_ENV=production
+APP_DEBUG=false          # never true on a public URL — errors would expose secrets
+SITE_NOINDEX=true        # review copy: keep it out of Google (X-Robots-Tag)
+TRUSTED_PROXIES=*        # Cloud sits behind a load balancer; without this every
+                         # signed invoice link returns 403
+
+MEDIA_DISK=<public bucket disk name>
+PRIVATE_DISK=<private bucket disk name>
+
+QUEUE_CONNECTION=sync
+QUEUE_CONVERSIONS_BY_DEFAULT=false
+CACHE_STORE=database
+SESSION_DRIVER=database
+MAIL_MAILER=log
+```
+
+`APP_KEY` and `DB_*` are provided by Cloud.
+
+## 4. Before sharing the link
+
+- Content: either copy the local database and `storage/app/{public,private}`
+  into the Cloud database and buckets (rewriting `media.disk` and
+  `media.conversions_disk` to the bucket disk names), or run
+  `php artisan db:seed --force` on Cloud for demo content.
+- **Change every admin password.** The seeded accounts use `password`.
+- Check: pages load, images come from the bucket, an invoice PDF downloads,
+  `curl -I` shows `X-Robots-Tag: noindex, nofollow`.
+
+## Before deploying anything
+
+```bash
+php artisan test                  # everyday suite
+php artisan test --group=smoke    # every public and admin page, every role (minutes)
+```

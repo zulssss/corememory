@@ -71,6 +71,13 @@ class ProjectForm
                         // This needs a queue worker running in production.
                         SpatieMediaLibraryFileUpload::make('hero')
                             ->collection('hero')
+                            // Filament defaults uploads to FILESYSTEM_DISK, which is
+                            // the PRIVATE 'local' disk. Media landing there is not
+                            // web-servable, so the public site gets a 403 and shows a
+                            // broken image over its blur placeholder. Anything a
+                            // visitor must see goes to the media library's public
+                            // disk — `public` locally, a public bucket on Cloud.
+                            ->disk(config('media-library.disk_name'))
                             ->image()
                             ->imageEditor()
                             ->maxSize(12 * 1024)
@@ -78,6 +85,7 @@ class ProjectForm
 
                         SpatieMediaLibraryFileUpload::make('gallery')
                             ->collection('gallery')
+                            ->disk(config('media-library.disk_name'))   // see the hero field above
                             ->image()
                             ->multiple()
                             ->reorderable()

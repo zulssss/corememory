@@ -6,6 +6,7 @@ namespace App\Support;
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
@@ -36,13 +37,17 @@ final class Lqip
 
         return Cache::remember($key, now()->addMonth(), function () use ($media): ?string {
             try {
-                $path = $media->getPath(self::CONVERSION);
+                // Read through the media's own disk rather than a local path,
+                // so this works on object storage too. Cached for a month, so
+                // a bucket is touched once per image, not per page view.
+                $disk = Storage::disk($media->conversions_disk ?: $media->disk);
+                $path = $media->getPathRelativeToRoot(self::CONVERSION);
 
-                if (! is_readable($path)) {
+                if (! $disk->exists($path)) {
                     return null;
                 }
 
-                $bytes = file_get_contents($path);
+                $bytes = $disk->get($path);
 
                 // A placeholder that isn't dramatically smaller than the real
                 // image is pointless — bail rather than inline something huge.

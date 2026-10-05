@@ -20,6 +20,13 @@
             <directory>tests/Concurrency</directory>
         </testsuite>
     </testsuites>
+    <!-- The full-site smoke test re-seeds per check and takes minutes. Run it
+         explicitly before publishing with the smoke group (see SmokeTest.php). -->
+    <groups>
+        <exclude>
+            <group>smoke</group>
+        </exclude>
+    </groups>
     <source>
         <include>
             <directory>app</directory>
@@ -54,6 +61,10 @@
         -->
         <env name="DB_CONNECTION" value="mysql"/>
         <env name="DB_DATABASE" value="corememory_testing"/>
+        <!-- Never write media into storage/app/public: that folder holds
+             the studio's real photographs, and testing media ids collide
+             with real ones. See config/filesystems.php disks.media_testing. -->
+        <env name="MEDIA_DISK" value="media_testing"/>
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>

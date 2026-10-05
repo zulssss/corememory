@@ -139,6 +139,27 @@ export PATH="$HOME/.config/herd-lite/bin:$PATH"
 **Page loads but has no styling** — assets aren't built. Run `npm run dev` (or
 `npm run build`).
 
+**"Error during upload" on an image, with no reason given** — the file is
+larger than PHP's `upload_max_filesize`. PHP rejects it before Laravel boots,
+so Filament's own 12 MB limit never gets a chance to explain itself. The
+compiled defaults (2M upload, 8M post) are far too small for wedding
+photographs. Check and fix:
+
+```bash
+php -r 'echo ini_get("upload_max_filesize"), " / ", ini_get("post_max_size"), "\n";'
+php --ini          # shows which php.ini is loaded
+```
+
+Set `upload_max_filesize = 24M`, `post_max_size = 32M` and `memory_limit = 512M`
+in that file, then **restart `php artisan serve`** — a running server keeps the
+old values. `UploadLimitsTest` fails if these drift below what the admin form
+advertises.
+
+**Image uploads, saves, then the public page still shows a grey placeholder** —
+check the upload actually persisted. A failed upload leaves an error on the
+form that blocks saving even after you replace the file with a smaller one;
+clear the failed file with its × first, then Save.
+
 **Page is blank with JS disabled or the bundle fails** — by design the page
 falls back to plain readable HTML after ~2.5s. If it stays blank, check the
 browser console for a JS error.

@@ -50,7 +50,7 @@ class InvoiceMail extends Mailable implements ShouldQueue
         }
 
         return [
-            Attachment::fromStorageDisk('local', $this->invoice->pdf_path)
+            Attachment::fromStorageDisk(config('filesystems.private_disk'), $this->invoice->pdf_path)
                 ->as("{$this->invoice->number}.pdf")
                 ->withMime('application/pdf'),
         ];

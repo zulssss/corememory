@@ -28,3 +28,6 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Laravel Cloud credentials, kept on this machine only — never committed.
+.env.cloud

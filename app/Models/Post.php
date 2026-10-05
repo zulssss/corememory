@@ -63,6 +63,12 @@ class Post extends Model implements HasMedia
 
         $this->addMediaConversion('grid')
             ->fit(Fit::Max, 900, 1200)->format('webp')->quality(80);
+
+        // The cover runs full width on the article page and is the article's
+        // share image, so it needs the large size too — matching Project.
+        // Without it, Seo asked for `full` and every post with a cover 500'd.
+        $this->addMediaConversion('full')
+            ->fit(Fit::Max, 1800, 2400)->format('webp')->quality(82);
     }
 
     public function scopePublished(Builder $query): Builder

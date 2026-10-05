@@ -131,12 +131,13 @@ class InvoicesTable
             ->action(function (Invoice $record, RenderInvoicePdf $render) {
                 $render->handle($record);
 
-                // Storage::path rather than storage_path(): the local disk
-                // root moved to storage/app/private in Laravel 11, and asking
-                // the disk means this keeps working wherever it points.
-                return response()->download(
-                    Storage::disk('local')->path($record->refresh()->pdf_path),
+                // Through the disk's own download(), never ->path(): a path
+                // exists only on a local disk, and on object storage (Laravel
+                // Cloud) there is no file on the server to hand over.
+                return Storage::disk(config('filesystems.private_disk'))->download(
+                    $record->refresh()->pdf_path,
                     "{$record->number}.pdf",
+                    ['Content-Type' => 'application/pdf'],
                 );
             });
     }

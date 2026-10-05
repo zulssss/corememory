@@ -34,6 +34,7 @@ class PostForm
 
                         SpatieMediaLibraryFileUpload::make('cover')
                             ->collection('cover')
+                            ->disk(config('media-library.disk_name'))   // public site asset — never the private default disk
                             ->image()
                             ->imageEditor()
                             ->maxSize(12 * 1024),

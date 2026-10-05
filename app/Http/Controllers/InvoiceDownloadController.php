@@ -29,12 +29,12 @@ class InvoiceDownloadController extends Controller
         // deploy, shouldn't give the client a 404 — regenerate on demand.
         // Prices and the number come from the record, so a re-render is
         // byte-for-byte the same document.
-        if ($invoice->pdf_path === null || ! Storage::disk('local')->exists($invoice->pdf_path)) {
+        if ($invoice->pdf_path === null || ! Storage::disk(config('filesystems.private_disk'))->exists($invoice->pdf_path)) {
             $render->handle($invoice);
             $invoice->refresh();
         }
 
-        return Storage::disk('local')->download(
+        return Storage::disk(config('filesystems.private_disk'))->download(
             $invoice->pdf_path,
             "{$invoice->number}.pdf",
             ['Content-Type' => 'application/pdf'],

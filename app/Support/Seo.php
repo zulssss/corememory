@@ -10,6 +10,7 @@ use App\Models\Project;
 use App\ValueObjects\Money;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
  * Structured data and social metadata.
@@ -111,8 +112,7 @@ final class Seo
             'description' => $post->excerpt,
             'datePublished' => $post->published_at?->toIso8601String(),
             'dateModified' => $post->updated_at?->toIso8601String(),
-            'image' => $post->getFirstMedia('cover')?->getUrl('full')
-                ?? $post->getFirstMedia('cover')?->getUrl(),
+            'image' => self::imageUrl($post->getFirstMedia('cover')),
             'mainEntityOfPage' => route('journal.show', $post),
             'author' => ['@type' => 'Organization', 'name' => __('site.brand.name')],
             'publisher' => [
@@ -189,5 +189,21 @@ final class Seo
 
         return (new Money((int) $range->min_price))->formatCompact()
             .' – '.(new Money((int) $range->max_price))->formatCompact();
+    }
+
+    /**
+     * The best available URL for a share image.
+     *
+     * Checks the conversion EXISTS before asking for it: getUrl('full') throws
+     * for a conversion the model never registered, and `??` cannot catch an
+     * exception — that is how every journal post with a cover returned a 500.
+     */
+    private static function imageUrl(?Media $media): ?string
+    {
+        if ($media === null) {
+            return null;
+        }
+
+        return $media->hasGeneratedConversion('full') ? $media->getUrl('full') : $media->getUrl();
     }
 }

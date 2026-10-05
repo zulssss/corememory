@@ -60,6 +60,9 @@ class PaymentsRelationManager extends RelationManager
 
             SpatieMediaLibraryFileUpload::make('receipt')
                 ->collection('receipt')
+                // Deliberately the PRIVATE disk: a payment receipt carries a
+                // client's banking details and must never be web-servable.
+                ->disk(config('filesystems.private_disk'))
                 ->label('Receipt')
                 ->image()
                 ->helperText('Optional photo of the transfer slip.'),

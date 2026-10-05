@@ -12,6 +12,7 @@
         "filament/spatie-laravel-media-library-plugin": "^5.0",
         "laravel/framework": "^13.17",
         "laravel/tinker": "^3.0",
+        "league/flysystem-aws-s3-v3": "^3.35",
         "spatie/laravel-medialibrary": "^11.0",
         "spatie/laravel-permission": "^6.0",
         "spatie/laravel-sitemap": "^8.2",

@@ -48,7 +48,7 @@ class RenderInvoicePdf
         // file for the same invoice rather than littering the disk.
         $path = "invoices/{$invoice->number}.pdf";
 
-        Storage::disk('local')->put($path, $pdf->output());
+        Storage::disk(config('filesystems.private_disk'))->put($path, $pdf->output());
 
         // Only the path changes. The number and the captured prices are never
         // touched by a re-render.
