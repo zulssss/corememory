@@ -141,6 +141,7 @@
                         :media="$feature->getFirstMedia('hero')"
                         :alt="__('site.media.alt_project', ['title' => $feature->title])"
                         sizes="100vw"
+                        :halftone="true"
                         class="w-full" />
                 </x-reveal>
             </a>
@@ -158,8 +159,8 @@
     @endif
 
     {{-- 07. OUR PACKAGES ---------------------------------------------------
-         Phase 3 replaces this with real Package records. Prices must always be
-         visible without interaction — that is the premise of the whole site. --}}
+         Real Package records, one per coverage type. Prices are always visible
+         without interaction — that is the premise of the whole site. --}}
     <x-section
         :label="__('site.sections.our_packages')"
         :link="route('packages')"
@@ -168,20 +169,15 @@
         <div class="grid gap-gutter md:grid-cols-12">
             <div class="md:col-span-8" data-reveal-group>
                 <div class="rule-t">
-                    @foreach ([
-                        ['Nikah Essentials',  380000, true,  'Half-day coverage, 300 edited photos'],
-                        ['Wedding Classic',   680000, false, 'Full-day coverage, two photographers'],
-                        ['Wedding Signature', 980000, false, 'Full day, photo + video, same-day edit'],
-                        ['Pre-wedding Story', 250000, true,  'Half day, one location'],
-                    ] as $i => [$name, $cents, $isFrom, $summary])
+                    @foreach ($packages as $i => $package)
                         <x-reveal>
                             <x-package-card
                                 :number="$i + 1"
-                                :name="$name"
-                                :price="new App\ValueObjects\Money($cents)"
-                                :price-is-from="$isFrom"
-                                :summary="$summary"
-                                :popular="$i === 1"
+                                :name="$package->name"
+                                :price="$package->price_cents"
+                                :price-is-from="$package->price_is_from"
+                                :summary="$package->description ?: implode(' · ', array_slice($package->inclusions ?? [], 0, 2))"
+                                :popular="$package->is_popular"
                                 :href="route('packages')" />
                         </x-reveal>
                     @endforeach
@@ -217,26 +213,54 @@
         </div>
     </x-section>
 
-    {{-- 09. TESTIMONIALS — scattered at different vertical offsets --------- --}}
+    {{-- 09. TESTIMONIALS — a descending zig-zag ------------------------------
+         Positions follow the owner's reference layout (testimonials.pdf): five
+         three-column cards stepping down the page, right → left → far right →
+         centre → far left, each starting partway down the one before.
+
+         Every card sits in its OWN full-width row. In one shared grid the
+         browser would auto-place /02 into the same row as /01, because their
+         columns don't clash; a row per card keeps the downward staircase.
+         The vertical rhythm is that row's top margin: negative where the card
+         rises into the previous card's band, which is safe because consecutive
+         cards never share a column. Measured from the reference: 110px, 192px,
+         129px and 193px between card tops, on cards about 166px tall.
+
+         More than five repeats the pattern; fewer simply stops early. Below lg
+         the cards stack — a three-column card is too narrow for a quote on a
+         tablet. --------------------------------------------------------------- --}}
     @if ($testimonials->isNotEmpty())
         @php
-            // Staggered offsets and spans, applied by position.
-            $offsets = [
-                'md:col-span-4',
-                'md:col-span-4 md:mt-16',
-                'md:col-span-3 md:col-start-10 md:mt-6',
+            // [column start, top margin] per position, in reference order.
+            $positions = [
+                ['lg:col-start-7',  ''],              // /01 — right of centre
+                ['lg:col-start-2',  'lg:-mt-14'],     // /02 — left, rises into /01's band
+                ['lg:col-start-10', 'lg:mt-6'],       // /03 — far right
+                ['lg:col-start-5',  'lg:-mt-10'],     // /04 — centre, rises into /03's band
+                ['lg:col-start-1',  'lg:mt-6'],       // /05 — far left
             ];
         @endphp
 
         <x-section :label="__('site.sections.words_from_couples')">
-            <div class="grid gap-gutter md:grid-cols-12">
+            <div class="flex flex-col gap-gutter lg:gap-0">
                 @foreach ($testimonials as $i => $testimonial)
-                    <x-reveal :class="$offsets[$i] ?? 'md:col-span-4'">
-                        <x-testimonial-card
-                            :context="$testimonial->context"
-                            :quote="$testimonial->quote"
-                            :couple="$testimonial->couple_name" />
-                    </x-reveal>
+                    @php
+                        [$column, $rise] = $positions[$i % count($positions)];
+                        // The next round of five starts by rising into the last
+                        // card's band too; the very first card does not.
+                        if ($i > 0 && $i % count($positions) === 0) {
+                            $rise = 'lg:-mt-14';
+                        }
+                    @endphp
+
+                    <div class="lg:grid lg:grid-cols-12 lg:gap-x-gutter {{ $rise }}">
+                        <x-reveal :class="'lg:col-span-3 '.$column">
+                            <x-testimonial-card
+                                :context="$testimonial->context"
+                                :quote="$testimonial->quote"
+                                :couple="$testimonial->couple_name" />
+                        </x-reveal>
+                    </div>
                 @endforeach
             </div>
         </x-section>

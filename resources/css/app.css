@@ -5,8 +5,13 @@
    `content` array in tailwind.config.js with this directive). */
 @source "../views";
 @source "../js";
-@source "../../app/Filament";
 @source "../../app/Livewire";
+
+/* The admin panel compiles its own stylesheet (resources/css/filament/admin/
+   theme.css), so its classes must NOT be scanned here as well — otherwise
+   every Filament utility is paid for twice and the public bundle carries CSS
+   no visitor's page can use. */
+@source not "../views/filament";
 
 /* =============================================================================
    BASE
@@ -39,6 +44,20 @@
 
   p {
     text-wrap: pretty;
+  }
+
+  /* Tailwind v4's Preflight DROPPED the `cursor: pointer` that v3 gave buttons,
+     so every button on this site showed a plain arrow. On a page whose primary
+     action is a single dark rectangle — "Send booking request" — that reads as
+     "not clickable", and couples stop rather than click. Put it back.
+
+     :where() keeps specificity at zero, so any utility class still wins. */
+  :where(button, [role="button"], summary):not(:disabled) {
+    cursor: pointer;
+  }
+
+  :where(button, [role="button"]):disabled {
+    cursor: not-allowed;
   }
 
   /* Visible focus is non-negotiable for the keyboard-navigable booking wizard.
@@ -107,12 +126,18 @@
   [data-parallax] > * {
     will-change: transform;
   }
-}
 
-/* =============================================================================
-   UTILITIES
-   ========================================================================== */
-@layer utilities {
+  /* -----------------------------------------------------------------------
+     DEFAULTS THAT UTILITIES MUST BE ABLE TO OVERRIDE.
+
+     These live in the components layer deliberately. They used to sit in
+     utilities, where they compiled AFTER Tailwind's own classes — so
+     `rule-all border-ink` drew the grey hairline anyway (the selected package
+     never highlighted) and `micro-label text-ink` stayed grey (the wizard's
+     current step looked like every other step). In components, any Tailwind
+     utility on the same element wins, which is what every template assumes.
+     ----------------------------------------------------------------------- */
+
   /* The tiny uppercase wide-tracked label that carries most of the site's
      structure. Used via <x-micro-label>, not hand-written in templates. */
   .micro-label {
@@ -130,7 +155,12 @@
   .rule-l { border-left: var(--border-width-hair) solid var(--color-rule); }
   .rule-r { border-right: var(--border-width-hair) solid var(--color-rule); }
   .rule-all { border: var(--border-width-hair) solid var(--color-rule); }
+}
 
+/* =============================================================================
+   UTILITIES
+   ========================================================================== */
+@layer utilities {
   /* Small L-shaped corner crop marks, per the reference layout's testimonial
      cards. Drawn with two gradients so no extra DOM is needed. */
   .crop-marks {
@@ -198,6 +228,31 @@
   [data-cursor-root] {
     display: none;
   }
+}
+
+/* =============================================================================
+   HALFTONE REVEAL (resources/js/halftone.js)
+   The canvas lies over the photograph and fades in only once it has drawn a
+   first frame, so there is never a flash of black between photo and print.
+   Pointer events stay on the container, so the link around it still clicks.
+   ========================================================================== */
+[data-halftone] {
+  position: relative;
+}
+
+.halftone-reveal__canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration-slow) var(--ease-out-editorial);
+}
+
+[data-halftone].is-halftone-ready .halftone-reveal__canvas {
+  opacity: 1;
 }
 
 /* =============================================================================

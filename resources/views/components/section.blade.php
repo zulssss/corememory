@@ -10,7 +10,7 @@
     'label' => null,
     'link' => null,
     'linkLabel' => null,
-    'size' => 'base',     // base | lg | flush
+    'size' => 'base',     // base | lg | intro | flush
     'gutter' => true,
     'ruleTop' => false,
 ])
@@ -18,6 +18,10 @@
 @php
     $padding = match ($size) {
         'lg' => 'py-section-lg',
+        // An inner page's opening section: the generous bottom rhythm of lg,
+        // but only a normal gap under the header. pt-* overrides the top half
+        // of py-*, the same way the existing `pb-0` overrides the bottom.
+        'intro' => 'py-section-lg pt-page-top',
         'flush' => '',
         default => 'py-section',
     };

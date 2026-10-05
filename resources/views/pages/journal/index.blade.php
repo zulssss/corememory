@@ -4,7 +4,7 @@
     :description="__('journal.meta_description')"
 >
 
-    <x-section size="lg" class="pb-0">
+    <x-section size="intro" class="pb-0">
         <x-reveal><x-micro-label>{{ __('site.nav.journal') }}</x-micro-label></x-reveal>
         <x-reveal>
             <h1 class="mt-4 max-w-[18ch] text-statement-lg font-medium text-ink">{{ __('journal.headline') }}</h1>

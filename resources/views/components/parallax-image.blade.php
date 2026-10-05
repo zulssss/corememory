@@ -18,6 +18,9 @@
     'alt' => '',
     'eager' => false,
     'sizes' => '(min-width: 768px) 50vw, 100vw',
+    // Print the photograph as a halftone with a cursor loupe (motion.js →
+    // halftone.js). The plain image stays underneath as the fallback.
+    'halftone' => false,
 ])
 
 <div
@@ -26,7 +29,7 @@
     style="aspect-ratio: {{ str_replace('/', ' / ', $ratio) }}"
 >
     {{-- scale-110 gives the transform room to travel without revealing a gap --}}
-    <div class="h-full w-full scale-110">
+    <div class="h-full w-full scale-110" @if ($halftone && $media) data-halftone @endif>
         @if ($media)
             <x-responsive-image :media="$media" :ratio="$ratio" :alt="$alt" :eager="$eager" :sizes="$sizes" />
         @else

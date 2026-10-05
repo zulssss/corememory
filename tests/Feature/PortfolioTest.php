@@ -7,7 +7,9 @@ use App\Models\Post;
 use App\Models\Project;
 use App\Models\Testimonial;
 use App\Support\Settings;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\View\ComponentAttributeBag;
 
 beforeEach(function () {
     Cache::flush();
@@ -97,6 +99,67 @@ it('hides unpublished testimonials from the homepage', function () {
     Testimonial::factory()->unpublished()->create(['quote' => 'This should stay hidden']);
 
     $this->get(route('home'))->assertOk()->assertDontSee('This should stay hidden');
+});
+
+it('shows every published testimonial on the homepage, in the admin order', function () {
+    // The homepage used to take only the first three. Every published one
+    // must appear, ordered by the drag-to-reorder sort_order in the admin.
+    foreach ([5, 1, 4, 2, 3] as $order) {
+        Testimonial::factory()->create(['quote' => "Quote number {$order}", 'sort_order' => $order]);
+    }
+    Testimonial::factory()->unpublished()->create(['quote' => 'A hidden one', 'sort_order' => 0]);
+
+    // Twice: the payload is cached, and cache bugs only show on the second read.
+    foreach ([1, 2] as $read) {
+        $this->get('/')
+            ->assertOk()
+            ->assertSeeInOrder(['Quote number 1', 'Quote number 2', 'Quote number 3', 'Quote number 4', 'Quote number 5'])
+            ->assertDontSee('A hidden one');
+    }
+});
+
+it('places testimonials in the reference zig-zag, repeating past five', function () {
+    foreach (range(1, 6) as $order) {
+        Testimonial::factory()->create(['quote' => "Quote {$order}", 'sort_order' => $order]);
+    }
+
+    $html = $this->get('/')->assertOk()->getContent();
+
+    // Column each quote lands in, in page order: /01-/05, then the pattern restarts.
+    preg_match_all('/lg:col-span-3 (lg:col-start-\d+)/', $html, $columns);
+
+    expect($columns[1])->toBe([
+        'lg:col-start-7', 'lg:col-start-2', 'lg:col-start-10',
+        'lg:col-start-5', 'lg:col-start-1', 'lg:col-start-7',
+    ]);
+});
+
+it('prints only the featured story as a halftone', function () {
+    // The halftone effect decorates exactly one image — the featured wedding
+    // after Selected Work. The <img> itself must still be in the page: it is
+    // the alt text, the SEO image, and the fallback on touch, reduced motion
+    // and browsers without WebGL 2.
+    $feature = Project::factory()->create(['is_featured' => true, 'sort_order' => 0]);
+    $feature->addMedia(UploadedFile::fake()->image('hero.jpg', 1600, 900))
+        ->toMediaCollection('hero');
+    Project::factory()->count(2)->create();   // the grid around it
+
+    $html = $this->get('/')->assertOk()->getContent();
+
+    expect(substr_count($html, 'data-halftone'))->toBe(1);
+
+    preg_match('/data-halftone[^>]*>\s*<img/s', $html, $match);
+    expect($match)->not->toBeEmpty();
+});
+
+it('never adds the halftone hook when there is no photograph', function () {
+    $html = view('components.parallax-image', [
+        'media' => null, 'halftone' => true, 'ratio' => '16/9',
+        'intensity' => 0.1, 'tone' => 'sunken', 'label' => null, 'alt' => '',
+        'eager' => false, 'sizes' => '100vw', 'attributes' => new ComponentAttributeBag,
+    ])->render();
+
+    expect($html)->not->toContain('data-halftone');
 });
 
 it('does not cache Eloquent models, which breaks on unserialize', function () {

@@ -152,6 +152,11 @@
   --spacing-section: clamp(4rem, 2.5rem + 7vw, 9rem);
   --spacing-section-lg: clamp(6rem, 3rem + 11vw, 14rem);
 
+  /* Space between the sticky header and an inner page's opening content.
+     Inner pages used to open with --spacing-section-lg, ~205px at a laptop
+     width: an empty band that read as a page failing to load, not as air. */
+  --spacing-page-top: clamp(2.5rem, 1.75rem + 2vw, 4.5rem);   /* 40 → 72px */
+
   /* ---------------------------------------------------------------------
      LAYOUT
      --------------------------------------------------------------------- */

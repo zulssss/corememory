@@ -13,7 +13,7 @@
     ]"
 >
 
-    <x-section size="lg" class="pb-0">
+    <x-section size="intro" class="pb-0">
         <div class="grid gap-8 md:grid-cols-12">
             <div class="md:col-span-8 md:col-start-3">
                 <x-reveal>

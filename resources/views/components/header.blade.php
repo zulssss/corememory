@@ -21,10 +21,12 @@
     <div class="page-gutter flex h-[var(--header-height)] items-center justify-between gap-6">
 
         {{-- Wordmark --}}
+        {{-- Sized by height, not width: the wordmark's aspect ratio does the
+             rest, so it stays optically level with the nav at any header height. --}}
         <a href="{{ route('home') }}"
-           class="font-mono text-caption font-medium uppercase tracking-wide-label text-ink transition-colors hover:text-accent"
+           class="shrink-0 text-ink transition-colors hover:text-accent"
            aria-label="{{ __('site.brand.name') }} — {{ __('site.nav.home') }}">
-            {{ __('site.brand.name') }}
+            <x-logo class="block h-[1.15rem] w-auto sm:h-[1.35rem]" />
         </a>
 
         {{-- Desktop navigation --}}

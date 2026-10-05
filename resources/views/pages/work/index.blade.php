@@ -12,7 +12,7 @@
     :description="__('site.work.meta_description')"
 >
 
-    <x-section size="lg" class="pb-0">
+    <x-section size="intro" class="pb-0">
         <x-reveal>
             <x-micro-label>{{ __('site.sections.selected_work') }}</x-micro-label>
         </x-reveal>

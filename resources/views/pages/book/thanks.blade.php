@@ -13,7 +13,7 @@
 
 <x-layouts.app :title="__('booking.thanks.headline').' — '.__('site.brand.name')">
 
-    <x-section size="lg">
+    <x-section size="intro">
         <div class="grid gap-gutter md:grid-cols-12">
             <div class="md:col-span-7">
                 <x-reveal>

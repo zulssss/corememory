@@ -305,6 +305,39 @@ function initMarquee() {
    CUSTOM CURSOR — desktop, fine pointer only. Never on touch.
    ---------------------------------------------------------------------- */
 
+/* -------------------------------------------------------------------------
+   HALFTONE REVEAL — [data-halftone]
+   The photograph prints as a halftone; a loupe under the cursor shows the real
+   image. Desktop with a real mouse only: on touch there is no cursor to
+   steer the loupe, so a phone would only ever see dots and never the photo.
+   Under reduced motion initMotion() never gets here, so the plain photograph
+   stays. ogl is fetched only when such an element exists.
+   ---------------------------------------------------------------------- */
+
+function initHalftone() {
+  if (!DESKTOP.matches || !FINE_POINTER.matches) return;
+
+  const targets = document.querySelectorAll("[data-halftone]");
+  if (targets.length === 0) return;
+
+  let cancelled = false;
+  const unmounts = [];
+
+  onCleanup(() => {
+    cancelled = true;
+    unmounts.splice(0).forEach((unmount) => unmount());
+  });
+
+  import("./halftone")
+    .then(({ mountHalftone }) => {
+      if (cancelled) return;
+      targets.forEach((el) => unmounts.push(mountHalftone(el)));
+    })
+    .catch(() => {
+      /* Chunk failed to load: the plain photograph is already showing. */
+    });
+}
+
 function initCursor() {
   if (!FINE_POINTER.matches || !DESKTOP.matches) return;
 
@@ -400,6 +433,83 @@ function initStickyFeature() {
    LIFECYCLE
    ---------------------------------------------------------------------- */
 
+/* -------------------------------------------------------------------------
+   BOOKING WIZARD — keep the next thing to do on screen
+   Livewire morphs the wizard in place and keeps the scroll position. Without
+   help the couple ends up looking at the wrong part of the page: the foot of
+   the next step, or above a session list they now need to choose from.
+   ---------------------------------------------------------------------- */
+
+/** Height covered by the sticky header, plus breathing room. Measured, not
+ *  read from --header-height: the token is in rem, the header is real. */
+function headerOffset() {
+  const header = document.querySelector("body > header, header.sticky");
+  return (header?.offsetHeight ?? 0) + 16;
+}
+
+/**
+ * Bring `el` into view — but only if it isn't already comfortably visible, so
+ * a couple who can already see it is never jolted. `align: "start"` puts its
+ * top under the header; "nearest" scrolls the least needed to show it whole.
+ */
+function reveal(el, { align = "start" } = {}) {
+  if (!el) return;
+
+  const offset = headerOffset();
+  const rect = el.getBoundingClientRect();
+  const viewport = window.innerHeight;
+  const visible = rect.top >= offset && rect.bottom <= viewport - 16;
+
+  if (visible) return;
+
+  // Taller than the space available, or above the fold: align its top.
+  let delta = rect.top - offset;
+  if (align === "nearest" && rect.top >= offset && rect.height < viewport - offset) {
+    delta = rect.bottom - (viewport - 24);
+  }
+
+  if (lenis) {
+    lenis.scrollTo(window.scrollY + delta);
+  } else {
+    // Reduced motion: Lenis was never created, so jump without animating.
+    window.scrollTo({ top: window.scrollY + delta, behavior: "auto" });
+  }
+}
+
+/** A step changed: show the progress bar and land focus on the new heading. */
+export function scrollToWizardTop() {
+  const wizard = document.getElementById("booking-wizard");
+  if (!wizard) return;
+
+  reveal(wizard);
+
+  // Keyboard and screen-reader users land on the new step too. preventScroll
+  // so focusing never fights the scroll above.
+  wizard.querySelector("[data-step-heading]")?.focus({ preventScroll: true });
+}
+
+/**
+ * Something inside the current step needs attention:
+ *   sessions / venue / continue — the next thing to fill in after a choice
+ *   error                       — the first warning after a failed Continue
+ */
+export function revealInWizard(target) {
+  const wizard = document.getElementById("booking-wizard");
+  if (!wizard) return;
+
+  if (target === "error") {
+    const warning = wizard.querySelector('[role="alert"]');
+    reveal(warning?.closest("label") ?? warning, { align: "start" });
+
+    // Put the cursor in the field the warning belongs to, if it is one.
+    warning?.closest("label")?.querySelector("input, select, textarea")
+      ?.focus({ preventScroll: true });
+    return;
+  }
+
+  reveal(wizard.querySelector(`[data-wizard-section="${target}"]`), { align: "nearest" });
+}
+
 /** Tears down everything. Called on navigation so nothing leaks between pages. */
 export function destroyMotion() {
   cleanups.splice(0).forEach((fn) => {
@@ -432,6 +542,7 @@ export function initMotion() {
   initMarquee();
   initStickyFeature();
   initCursor();
+  initHalftone();
 
   // Images finishing late change element offsets, so triggers need recalculating.
   window.addEventListener("load", () => ScrollTrigger.refresh());

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Public;
 
 use App\Http\Controllers\Controller;
+use App\Models\Package;
 use App\Models\Post;
 use App\Models\Project;
 use App\Models\Testimonial;
@@ -45,11 +46,25 @@ class HomeController extends Controller
                 'project_ids' => Project::query()
                     ->published()->ordered()->limit(6)->pluck('id')->all(),
 
+                // Every published testimonial, in the order the owner drags them
+                // to in the admin. (This used to stop at three, silently.)
                 'testimonial_ids' => Testimonial::query()
-                    ->published()->ordered()->limit(3)->pluck('id')->all(),
+                    ->published()->ordered()->pluck('id')->all(),
 
                 'post_ids' => Post::query()
                     ->published()->latest('published_at')->limit(3)->pluck('id')->all(),
+
+                // One representative package per coverage type: the cheapest
+                // way into Photo, Video, Photo & Video and Sessions. The
+                // homepage teases the range; /packages carries all eighteen.
+                'package_ids' => Package::query()
+                    ->active()
+                    ->ordered()
+                    ->get(['id', 'category'])
+                    ->groupBy(fn (Package $package) => $package->category?->value)
+                    ->map(fn ($group) => $group->first()->id)
+                    ->values()
+                    ->all(),
 
                 'stats' => [
                     ['value' => (int) Settings::get('stats.years'), 'label' => (string) Settings::get('stats.years_label'), 'pad' => true],
@@ -87,6 +102,11 @@ class HomeController extends Controller
                 ->whereIn('id', $selection['post_ids'])
                 ->latest('published_at')
                 ->with('media')
+                ->get(),
+
+            // Hydrated fresh from the cached ids — never cached as models.
+            'packages' => Package::whereIn('id', $selection['package_ids'])
+                ->ordered()
                 ->get(),
 
             'stats' => $selection['stats'],

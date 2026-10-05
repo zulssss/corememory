@@ -51,6 +51,9 @@
 </head>
 <body class="min-h-screen bg-paper text-ink antialiased">
 
+    {{-- The wordmark path, defined once. Header and footer both <use> it. --}}
+    <x-logo-symbol />
+
     {{-- Keyboard users land here first and can jump straight past the nav. --}}
     <a href="#main" class="sr-only-focusable absolute left-gutter top-4 z-100 bg-ink px-4 py-2 font-mono text-micro uppercase tracking-micro text-paper">
         {{ __('site.skip_to_content') }}
