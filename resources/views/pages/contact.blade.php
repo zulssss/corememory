@@ -12,7 +12,7 @@
     :description="__('contact.meta_description')"
 >
 
-    <x-section size="lg">
+    <x-section size="intro">
         <div class="grid gap-gutter md:grid-cols-12">
 
             {{-- Intro + form --}}
@@ -57,6 +57,7 @@
                                 name="{{ $field }}"
                                 value="{{ old($field) }}"
                                 @required($required)
+                                @if ($field === 'phone') placeholder="012-345 6789" data-phone-format inputmode="tel" autocomplete="tel" maxlength="16" @endif
                                 @if ($errors->has($field)) aria-invalid="true" aria-describedby="{{ $field }}-error" @endif
                                 @class([
                                     'border bg-paper px-3 py-2.5 text-body text-ink focus:border-ink',

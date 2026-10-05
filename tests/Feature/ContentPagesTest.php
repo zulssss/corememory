@@ -54,6 +54,34 @@ describe('about', function () {
     });
 });
 
+describe('the terms page', function () {
+    it('publishes every clause from the studio pricelist', function () {
+        $response = $this->get(route('terms'))->assertOk();
+
+        // Each group renders, and the clause count matches the lang file, so a
+        // clause cannot be dropped silently when the terms are edited.
+        $expected = collect(['booking', 'coverage', 'delivery', 'cancellation'])
+            ->flatMap(fn (string $group) => __('terms.'.$group));
+
+        expect($expected)->toHaveCount(17);
+
+        foreach ($expected as $clause) {
+            $response->assertSee($clause, escape: true);
+        }
+    });
+
+    it('is reachable from the footer and listed in the sitemap', function () {
+        $this->get('/')->assertOk()->assertSee(route('terms'), escape: false);
+        $this->get(route('sitemap'))->assertOk()->assertSee(route('terms'), escape: false);
+    });
+
+    it('is linked from the booking consent checkbox', function () {
+        // A couple must be able to read what they are accepting before they
+        // accept it, not after.
+        $this->get(route('book'))->assertOk()->assertSee(route('terms'), escape: false);
+    });
+});
+
 describe('the contact form', function () {
     it('renders', function () {
         $this->get(route('contact'))->assertOk();
@@ -77,6 +105,76 @@ describe('the contact form', function () {
 
         Mail::assertQueued(EnquiryReceivedMail::class,
             fn ($mail) => $mail->hasTo('studio@example.test'));
+    });
+
+    it('notifies the studio address when no contact email is set', function () {
+        /*
+         * The live configuration: contact.email is blank because the studio's
+         * pricelist never gave one, so the fallback chain decides where an
+         * enquiry lands. It used to fall back to mail.from.address — the
+         * address the site sends FROM — so notifications went to the wrong
+         * mailbox while booking notifications went to the studio. The test
+         * above only ever exercised the first branch.
+         */
+        Mail::fake();
+        Settings::set('contact.email', '');
+        config()->set('mail.studio_address', 'studio@corememory.test');
+        config()->set('mail.from.address', 'noreply@corememory.test');
+
+        $this->post(route('contact.store'), [
+            'name' => 'Syamim',
+            'email' => 'syamim@example.test',
+            'message' => 'Are you free in March?',
+        ])->assertRedirect(route('contact'));
+
+        Mail::assertQueued(
+            EnquiryReceivedMail::class,
+            fn ($mail) => $mail->hasTo('studio@corememory.test')
+                && ! $mail->hasTo('noreply@corememory.test')
+        );
+    });
+
+    it('still stores the message when there is nowhere to notify', function () {
+        // A missing studio address must never cost the studio the enquiry.
+        Mail::fake();
+        Settings::set('contact.email', '');
+        config()->set('mail.studio_address', null);
+        config()->set('mail.from.address', null);
+
+        $this->post(route('contact.store'), [
+            'name' => 'Aminah',
+            'email' => 'aminah@example.test',
+            'message' => 'Do you have a date free in November for a nikah?',
+        ])->assertRedirect(route('contact'))->assertSessionHas('enquiry_sent');
+
+        expect(Enquiry::where('email', 'aminah@example.test')->exists())->toBeTrue();
+        Mail::assertNothingQueued();
+    });
+
+    it('clears the form after a successful send', function () {
+        // The visitor must be able to tell the message went. A banner over a
+        // form still holding their text reads as "it did not send".
+        $html = $this->followingRedirects()->post(route('contact.store'), [
+            'name' => 'Nurul',
+            'email' => 'nurul@example.test',
+            'message' => 'Checking a date',
+        ])->assertOk()->getContent();
+
+        expect($html)->toContain(__('contact.sent.label'));
+
+        preg_match('/name="name"[^>]*value="([^"]*)"/', $html, $name);
+        expect($name[1] ?? '')->toBe('');
+    });
+
+    it('stores the phone in one format, whatever was typed', function () {
+        $this->post(route('contact.store'), [
+            'name' => 'Aisyah',
+            'email' => 'aisyah@example.test',
+            'phone' => "012\u{2011}452 2344 ",
+            'message' => 'Do you have a date free in November?',
+        ])->assertSessionHasNoErrors();
+
+        expect(Enquiry::where('email', 'aisyah@example.test')->sole()->phone)->toBe('012-452 2344');
     });
 
     it('validates through the Form Request', function (array $payload, string $field) {

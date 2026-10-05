@@ -57,11 +57,24 @@ final readonly class SlotAvailability
         return new self($slot, self::OUT_OF_WINDOW, false, $reason);
     }
 
+    /**
+     * Presentation label — "Morning (9:00 AM – 12:00 PM)".
+     *
+     * It lives here rather than being reached through to the enum from Blade
+     * so the object and toArray() cannot drift into describing different
+     * things, which is exactly how the template came to read a `label`
+     * property that only existed in the array shape.
+     */
+    public function label(): string
+    {
+        return $this->slot->labelWithTime();
+    }
+
     public function toArray(): array
     {
         return [
             'slot' => $this->slot->value,
-            'label' => $this->slot->labelWithTime(),
+            'label' => $this->label(),
             'state' => $this->state,
             'bookable' => $this->bookable,
             'reason' => $this->reason,

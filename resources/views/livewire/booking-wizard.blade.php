@@ -17,28 +17,38 @@
     $quote = $this->quote;
 @endphp
 
-<div class="page-gutter py-section">
+<div id="booking-wizard" class="page-gutter py-section pt-page-top">
 
     {{-- ---------------------------------------------------------------
          Progress indicator
          --------------------------------------------------------------- --}}
-    <nav class="rule-b pb-5" aria-label="{{ __('booking.wizard.title') }}">
-        <ol class="flex flex-wrap items-center gap-x-6 gap-y-2">
+    {{-- Progress. Three states, each visibly different:
+         current  — ink, with a solid bar under it
+         done     — clickable, to go back and change something
+         upcoming — faint and disabled; jumping forward would skip the
+                    availability re-check that runs when leaving the date step. --}}
+    <nav class="rule-b" aria-label="{{ __('booking.wizard.title') }}">
+        <ol class="flex flex-wrap items-end gap-x-6 gap-y-2">
             @foreach ($steps as $number => $label)
+                @php
+                    $isCurrent = $number === $step;
+                    $isDone = $number < $step;
+                @endphp
                 <li>
                     <button
                         type="button"
                         wire:click="goToStep({{ $number }})"
-                        @disabled($number >= $step)
+                        @disabled(! $isDone)
+                        @if ($isDone) title="{{ __('booking.wizard.back_to_step', ['step' => $label]) }}" @endif
                         @class([
-                            'micro-label transition-colors',
-                            'text-ink' => $number === $step,
-                            'hover:text-ink cursor-pointer' => $number < $step,
-                            'cursor-default' => $number > $step,
+                            'micro-label -mb-px border-b-2 pb-4 transition-colors',
+                            'border-ink text-ink' => $isCurrent,
+                            'border-transparent text-ink-soft hover:border-ink-faint hover:text-ink' => $isDone,
+                            'border-transparent text-ink-faint' => ! $isCurrent && ! $isDone,
                         ])
-                        @if ($number === $step) aria-current="step" @endif
+                        @if ($isCurrent) aria-current="step" @endif
                     >
-                        <span class="tabular-nums">{{ str_pad((string) $number, 2, '0', STR_PAD_LEFT) }}</span>
+                        <span class="tabular-nums">{{ $isDone ? '✓' : str_pad((string) $number, 2, '0', STR_PAD_LEFT) }}</span>
                         <span class="ml-1.5">{{ $label }}</span>
                     </button>
                 </li>
@@ -69,15 +79,27 @@
                  STEP 1 — DATE AND SESSION, ALWAYS FIRST
                  ------------------------------------------------------ --}}
             @if ($step === BookingWizard::STEP_DATES)
-                <h1 class="text-statement font-medium text-ink">{{ __('booking.wizard.headline') }}</h1>
+                {{-- Keyed so the morph cannot reuse one step's inputs and buttons
+                     for another's: that is how the submit button lost its
+                     click handler. --}}
+                <div wire:key="wizard-step-dates">
+                <h1 tabindex="-1" data-step-heading class="text-statement font-medium text-ink outline-none">{{ __('booking.wizard.headline') }}</h1>
                 <p class="mt-4 max-w-measure text-body text-ink-muted">{{ __('booking.wizard.intro') }}</p>
 
                 {{-- Your chosen dates --}}
                 <div class="mt-10 flex flex-col gap-4">
                     @foreach ($dates as $index => $date)
+                        @php
+                            // Any warning on this date row — session, venue, city,
+                            // state — flags the whole row, so with several dates
+                            // the couple can see WHICH one is incomplete.
+                            $rowIncomplete = collect($errors->keys())
+                                ->contains(fn ($key) => str_starts_with($key, "dates.{$index}."));
+                        @endphp
                         <div @class([
                             'rule-all p-4 transition-colors',
-                            'border-ink' => $activeDate === $index,
+                            'border-critical' => $rowIncomplete,
+                            'border-ink' => $activeDate === $index && ! $rowIncomplete,
                         ])>
                             <div class="flex items-start justify-between gap-4">
                                 <button type="button" wire:click="focusDate({{ $index }})" class="text-left">
@@ -102,6 +124,14 @@
                                     </button>
                                 @endif
                             </div>
+
+                            @error("dates.{$index}.event_date")
+                                <p role="alert" class="mt-2 text-body-sm text-critical">{{ $message }}</p>
+                            @enderror
+
+                            @if ($rowIncomplete && $activeDate !== $index)
+                                <p class="mt-2 text-body-sm text-critical">{{ __('booking.wizard.date_incomplete') }}</p>
+                            @endif
 
                             @if (count($dates) > 1)
                                 <input type="text" wire:model.blur="dates.{{ $index }}.label"
@@ -180,7 +210,7 @@
 
                 {{-- Session slots for the chosen day --}}
                 @if ($chosenDay = ($dates[$activeDate]['event_date'] ?? null))
-                    <div class="mt-10">
+                    <div class="mt-10" data-wizard-section="sessions">
                         <x-micro-label class="rule-b block pb-3">{{ __('booking.wizard.choose_a_session') }}</x-micro-label>
 
                         <div class="mt-4 flex flex-col gap-3" role="radiogroup" aria-label="{{ __('booking.wizard.choose_a_session') }}">
@@ -200,7 +230,7 @@
                                         'hover:border-ink' => $state->bookable && ! $isSelected,
                                     ])
                                 >
-                                    <span class="text-body-sm font-medium">{{ $state->label }}</span>
+                                    <span class="text-body-sm font-medium">{{ $state->label() }}</span>
 
                                     {{-- Unavailable options stay visible WITH THEIR REASON
                                          rather than disappearing — the brief is explicit. --}}
@@ -214,17 +244,30 @@
                                 </button>
                             @endforeach
                         </div>
+
+                        @error("dates.{$activeDate}.session_slot")
+                            <p role="alert" class="mt-3 text-body-sm text-critical">{{ $message }}</p>
+                        @enderror
                     </div>
                 @endif
 
                 {{-- Venue for this date --}}
                 @if ($dates[$activeDate]['session_slot'] ?? null)
-                    <div class="mt-8 grid gap-4 sm:grid-cols-3">
+                    <div class="mt-8 grid gap-4 sm:grid-cols-3" data-wizard-section="venue">
                         @foreach (['venue' => 'venue', 'city' => 'city', 'state' => 'state'] as $field => $key)
+                            @php $model = "dates.{$activeDate}.{$field}"; @endphp
                             <label class="flex flex-col gap-1.5">
                                 <x-micro-label>{{ __('booking.fields.'.$key) }}</x-micro-label>
-                                <input type="text" wire:model.blur="dates.{{ $activeDate }}.{{ $field }}"
-                                       class="border border-input-border bg-paper px-3 py-2 text-body-sm text-ink focus:border-ink">
+                                <input type="text" wire:model.blur="{{ $model }}"
+                                       @if ($errors->has($model)) aria-invalid="true" aria-describedby="{{ $model }}-error" @endif
+                                       @class([
+                                           'border bg-paper px-3 py-2 text-body-sm text-ink focus:border-ink',
+                                           'border-critical' => $errors->has($model),
+                                           'border-input-border' => ! $errors->has($model),
+                                       ])>
+                                @error($model)
+                                    <span id="{{ $model }}-error" role="alert" class="text-body-sm text-critical">{{ $message }}</span>
+                                @enderror
                             </label>
                         @endforeach
                     </div>
@@ -237,28 +280,86 @@
                         {{ __('booking.availability_disclaimer') }}
                     </p>
                 </div>
+                </div>
             @endif
 
             {{-- ------------------------------------------------------
                  STEP 2 — PACKAGE
                  ------------------------------------------------------ --}}
             @if ($step === BookingWizard::STEP_PACKAGE)
-                <h1 class="text-statement font-medium text-ink">{{ __('site.sections.our_packages') }}</h1>
+                {{-- Keyed so the morph cannot reuse one step's inputs and buttons
+                     for another's: that is how the submit button lost its
+                     click handler. --}}
+                <div wire:key="wizard-step-package">
+                <h1 tabindex="-1" data-step-heading class="text-statement font-medium text-ink outline-none">{{ __('site.sections.our_packages') }}</h1>
 
-                <div class="mt-8 flex flex-col gap-4">
-                    @foreach ($packages as $package)
-                        @php $isSelected = $packageId === $package->id; @endphp
+                @php
+                    $activeCategory = \App\Enums\PackageCategory::tryFrom($packageCategory);
+                    $selectedCategory = $this->package?->category;
+                @endphp
 
+                {{-- One category at a time, so the couple compares a handful of
+                     packages instead of scrolling eighteen. --}}
+                <div role="tablist" aria-label="{{ __('site.sections.our_packages') }}" class="rule-b mt-6 flex flex-wrap gap-x-6 gap-y-2">
+                    @foreach ($packageTabs as $tab)
+                        @php $isActive = $activeCategory === $tab; @endphp
                         <button
                             type="button"
+                            role="tab"
+                            wire:key="package-tab-{{ $tab->value }}"
+                            wire:click="showCategory('{{ $tab->value }}')"
+                            aria-selected="{{ $isActive ? 'true' : 'false' }}"
+                            @class([
+                                'micro-label -mb-px border-b-2 pb-3 transition-colors',
+                                'border-ink text-ink' => $isActive,
+                                'border-transparent hover:text-ink' => ! $isActive,
+                            ])
+                        >
+                            {{ $tab->label() }}
+                            {{-- The couple's choice lives in another tab: say so, rather
+                                 than let it look as if nothing is selected. --}}
+                            @if ($selectedCategory === $tab && ! $isActive)
+                                <span class="ml-1 text-ink" aria-label="{{ __('booking.wizard.selected') }}">●</span>
+                            @endif
+                        </button>
+                    @endforeach
+                </div>
+
+                @if ($activeCategory)
+                    <p class="mt-4 max-w-measure text-body-sm text-ink-muted">{{ $activeCategory->description() }}</p>
+
+                    {{-- Desktop: side-by-side comparison. --}}
+                    <div class="mt-6 hidden md:block">
+                        <x-package-compare :packages="$tabPackages" :category="$activeCategory" :selected-id="$packageId" />
+                    </div>
+                @endif
+
+                {{-- Phone: the same packages as compact cards — a table this wide
+                     would not fit. --}}
+                <div class="mt-6 flex flex-col gap-4 md:hidden">
+                    @foreach ($tabPackages as $package)
+                        @php $isSelected = $packageId === $package->id; @endphp
+
+                        {{-- Selected = ink border doubled by an inset ring (reads as 2px)
+                             on a raised surface, plus a label: unmistakable against
+                             the hairline cards around it, and not colour-only. --}}
+                        <button
+                            type="button"
+                            wire:key="package-card-{{ $package->id }}"
                             wire:click="selectPackage({{ $package->id }})"
                             @class([
                                 'rule-all p-5 text-left transition-colors',
-                                'border-ink' => $isSelected,
+                                'border-ink bg-paper-raised ring-1 ring-inset ring-ink' => $isSelected,
                                 'hover:border-ink-faint' => ! $isSelected,
                             ])
                             aria-pressed="{{ $isSelected ? 'true' : 'false' }}"
                         >
+                            @if ($isSelected)
+                                <span class="mb-3 block font-mono text-micro uppercase tracking-micro text-ink">
+                                    ● {{ __('booking.wizard.selected') }}
+                                </span>
+                            @endif
+
                             <div class="flex items-baseline justify-between gap-4">
                                 <h2 class="text-body-lg font-medium text-ink">
                                     {{ $package->name }}
@@ -293,13 +394,18 @@
                 @error('packageId')
                     <p role="alert" class="mt-4 text-body-sm text-critical">{{ $message }}</p>
                 @enderror
+                </div>
             @endif
 
             {{-- ------------------------------------------------------
                  STEP 3 — ADD-ONS
                  ------------------------------------------------------ --}}
             @if ($step === BookingWizard::STEP_ADDONS)
-                <h1 class="text-statement font-medium text-ink">{{ __('site.packages.add_ons') }}</h1>
+                {{-- Keyed so the morph cannot reuse one step's inputs and buttons
+                     for another's: that is how the submit button lost its
+                     click handler. --}}
+                <div wire:key="wizard-step-add-ons">
+                <h1 tabindex="-1" data-step-heading class="text-statement font-medium text-ink outline-none">{{ __('site.packages.add_ons') }}</h1>
                 <p class="mt-4 max-w-measure text-body text-ink-muted">{{ __('booking.wizard.add_ons_intro') }}</p>
 
                 <div class="rule-t mt-8">
@@ -354,13 +460,18 @@
                         </div>
                     @endforeach
                 </div>
+                </div>
             @endif
 
             {{-- ------------------------------------------------------
                  STEP 4 — DETAILS
                  ------------------------------------------------------ --}}
             @if ($step === BookingWizard::STEP_DETAILS)
-                <h1 class="text-statement font-medium text-ink">{{ __('booking.wizard.your_details') }}</h1>
+                {{-- Keyed so the morph cannot reuse one step's inputs and buttons
+                     for another's: that is how the submit button lost its
+                     click handler. --}}
+                <div wire:key="wizard-step-details">
+                <h1 tabindex="-1" data-step-heading class="text-statement font-medium text-ink outline-none">{{ __('booking.wizard.your_details') }}</h1>
 
                 <div class="mt-8 grid gap-5 sm:grid-cols-2">
                     @foreach ([
@@ -378,7 +489,7 @@
                             </x-micro-label>
 
                             <input type="{{ $type }}" wire:model.blur="{{ $model }}"
-                                   @if ($key === 'phone') placeholder="012-345 6789" @endif
+                                   @if ($key === 'phone') placeholder="012-345 6789" data-phone-format inputmode="tel" autocomplete="tel" maxlength="16" @endif
                                    @class([
                                        'border bg-paper px-3 py-2.5 text-body text-ink focus:border-ink',
                                        'border-critical' => $errors->has($model),
@@ -414,13 +525,18 @@
                                   class="border border-input-border bg-paper px-3 py-2.5 text-body text-ink focus:border-ink"></textarea>
                     </label>
                 </div>
+                </div>
             @endif
 
             {{-- ------------------------------------------------------
                  STEP 5 — REVIEW
                  ------------------------------------------------------ --}}
             @if ($step === BookingWizard::STEP_REVIEW)
-                <h1 class="text-statement font-medium text-ink">{{ __('booking.wizard.review_headline') }}</h1>
+                {{-- Keyed so the morph cannot reuse one step's inputs and buttons
+                     for another's: that is how the submit button lost its
+                     click handler. --}}
+                <div wire:key="wizard-step-review">
+                <h1 tabindex="-1" data-step-heading class="text-statement font-medium text-ink outline-none">{{ __('booking.wizard.review_headline') }}</h1>
 
                 {{-- Dates --}}
                 <div class="rule-t mt-8 pt-5">
@@ -476,7 +592,12 @@
                 <label class="mt-8 flex cursor-pointer items-start gap-3">
                     <input type="checkbox" wire:model.live="terms"
                            class="mt-1 h-4 w-4 shrink-0 accent-[var(--color-ink)]">
-                    <span class="text-body-sm text-ink-soft">{{ __('booking.wizard.terms_label') }}</span>
+                    <span class="text-body-sm text-ink-soft">
+                        {!! __('booking.wizard.terms_label', [
+                            'terms' => '<a href="'.route('terms').'" target="_blank" rel="noopener" class="underline underline-offset-2 hover:text-ink">'
+                                .e(__('booking.wizard.terms_link')).'</a>',
+                        ]) !!}
+                    </span>
                 </label>
 
                 @error('terms')
@@ -491,24 +612,77 @@
                         <input type="text" tabindex="-1" autocomplete="off" wire:model="website_url">
                     </label>
                 </div>
+                </div>
+            @endif
+
+            {{-- ------------------------------------------------------
+                 Why the action didn't go through.
+
+                 submit() can return early — rate limited, or a field from an
+                 earlier step failing revalidation. Those messages used to
+                 render only at the top of the wizard, which on the review step
+                 is a screen and a half above the button: the couple clicks,
+                 sees nothing move, and concludes the button is broken. Say it
+                 where the click happened.
+                 ------------------------------------------------------ --}}
+            @php
+                // `terms` is excluded: it already renders inline against its own
+                // checkbox a few lines up, and repeating it here reads as two
+                // separate problems.
+                $strayErrors = collect($errors->keys())
+                    ->reject(fn (string $key) => $key === 'terms')
+                    ->flatMap(fn (string $key) => $errors->get($key));
+            @endphp
+
+            @if ($step === BookingWizard::STEP_REVIEW && ($clashError || $strayErrors->isNotEmpty()))
+                <div role="alert" class="mt-10 border border-critical bg-paper-raised p-5">
+                    <x-micro-label class="text-critical">{{ __('booking.errors.not_sent') }}</x-micro-label>
+
+                    @if ($clashError)
+                        <p class="mt-2 text-body-sm text-ink">{{ $clashError }}</p>
+                    @endif
+
+                    @if ($strayErrors->isNotEmpty())
+                        <ul class="mt-2 flex list-disc flex-col gap-1 pl-5 text-body-sm text-ink">
+                            @foreach ($strayErrors as $message)
+                                <li>{{ $message }}</li>
+                            @endforeach
+                        </ul>
+                    @endif
+                </div>
             @endif
 
             {{-- ------------------------------------------------------
                  Navigation
                  ------------------------------------------------------ --}}
-            <div class="rule-t mt-12 flex items-center justify-between gap-4 pt-6">
+            <div class="rule-t mt-12 flex items-center justify-between gap-4 pt-6" data-wizard-section="continue">
                 <button type="button" wire:click="previousStep"
                         @class(['micro-label hover:text-ink', 'invisible' => $step === BookingWizard::STEP_DATES])>
                     ← {{ __('booking.wizard.back') }}
                 </button>
 
+                {{-- wire:key IS LOAD-BEARING HERE, not a nicety.
+
+                     These two buttons sit at the same position and are both
+                     <button type="button">. Without distinct keys Livewire's
+                     DOM morph treats them as the same element and merely
+                     patches wire:click from "nextStep" to "submit" — and the
+                     click binding does not survive that patch. The button then
+                     renders perfectly and does nothing at all: no submit, no
+                     terms warning, no error. Reloading the page builds a fresh
+                     element and it works again, which is exactly how this was
+                     reported ("kena refresh dulu baru boleh").
+
+                     Distinct keys make morphdom replace the element instead of
+                     patching it, so the handler is always bound to the action
+                     actually written on it. --}}
                 @if ($step < BookingWizard::STEP_REVIEW)
-                    <button type="button" wire:click="nextStep"
+                    <button type="button" wire:key="wizard-nav-next" wire:click="nextStep"
                             class="border border-ink px-6 py-3.5 font-mono text-micro uppercase tracking-micro text-ink transition-colors hover:bg-ink hover:text-paper">
                         {{ __('booking.wizard.next') }} →
                     </button>
                 @else
-                    <button type="button" wire:click="submit" wire:loading.attr="disabled"
+                    <button type="button" wire:key="wizard-nav-submit" wire:click="submit" wire:target="submit" wire:loading.attr="disabled"
                             class="border border-ink bg-ink px-6 py-3.5 font-mono text-micro uppercase tracking-micro text-paper transition-opacity disabled:opacity-50">
                         <span wire:loading.remove wire:target="submit">↗ {{ __('booking.wizard.submit') }}</span>
                         <span wire:loading wire:target="submit">…</span>
@@ -545,7 +719,7 @@
                     </div>
 
                     <div class="mt-3 flex items-baseline justify-between gap-4">
-                        <x-micro-label>{{ __('booking.wizard.deposit_line', ['percent' => (int) $quote->depositPercent]) }}</x-micro-label>
+                        <x-micro-label>{{ __('booking.wizard.deposit_line', ['amount' => $quote->depositPerEvent->formatCompact()]) }}</x-micro-label>
                         <span class="shrink-0 text-body-sm tabular-nums text-ink">{{ $quote->deposit->formatCompact() }}</span>
                     </div>
 

@@ -69,6 +69,10 @@ return [
         'date_label_hint' => 'e.g. Nikah, Reception',
         'choose_a_day' => 'Choose a day',
         'choose_a_session' => 'Choose a session',
+        'date_incomplete' => 'Something is still missing for this date — tap it to finish.',
+        'selected' => 'Selected',
+        'choose' => 'Choose',
+        'back_to_step' => 'Back to :step',
         'selected' => 'Selected',
         'no_date_yet' => 'No date chosen yet',
         'previous_month' => 'Previous month',
@@ -76,7 +80,7 @@ return [
         'date_number' => 'Date :number',
 
         'running_total' => 'Estimated total',
-        'deposit_line' => 'Deposit (:percent%)',
+        'deposit_line' => 'Deposit (:amount per event)',
         'balance_line' => 'Balance',
         'package_line' => 'Package',
         'add_ons_line' => 'Add-ons',
@@ -91,7 +95,8 @@ return [
         'your_dates' => 'Your dates',
         'your_package' => 'Your package',
         'your_details' => 'Your details',
-        'terms_label' => 'I understand this is a booking request, not a confirmation, and that CoreMemory will contact me to confirm availability.',
+        'terms_label' => 'I understand this is a booking request, not a confirmation, that CoreMemory will contact me to confirm availability, and I have read the :terms.',
+        'terms_link' => 'terms and conditions',
     ],
 
     'fields' => [
@@ -133,6 +138,12 @@ return [
         'phone' => 'Please enter a Malaysian mobile number, for example 012-345 6789.',
         'terms' => 'Please confirm you understand this is a request, not a confirmation.',
         'too_many' => 'That is a few requests in a short time. Please try again in :minutes minutes, or message us on WhatsApp.',
+        'not_sent' => 'Not sent yet',
+        'date_required' => 'Please choose a date on the calendar.',
+        'session_required' => 'Please choose a session for this date.',
+        'venue_required' => 'Please tell us the venue.',
+        'city_required' => 'Please tell us the city.',
+        'state_required' => 'Please tell us the state.',
     ],
 
     'sources' => [

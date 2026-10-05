@@ -34,10 +34,22 @@ class ContactController extends Controller
         // Queued. A message already saved must never be lost to a mail outage,
         // so a failure is logged rather than thrown at the visitor.
         try {
-            $studio = Settings::get('contact.email') ?? config('mail.from.address');
+            /*
+             * The same chain SendBookingNotifications uses, in the same order.
+             * This previously fell back to mail.from.address — the address the
+             * site sends FROM — so enquiry notifications landed in the wrong
+             * mailbox while booking notifications went to the studio.
+             */
+            $studio = Settings::get('contact.email')
+                ?? config('mail.studio_address')
+                ?? config('mail.from.address');
 
             if (filled($studio)) {
                 Mail::to($studio)->queue(new EnquiryReceivedMail($enquiry));
+            } else {
+                Log::warning('No studio address configured — enquiry notification not sent', [
+                    'enquiry' => $enquiry->id,
+                ]);
             }
         } catch (\Throwable $e) {
             Log::error('Failed to queue enquiry notification', [

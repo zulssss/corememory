@@ -43,9 +43,12 @@ class BookingRules
             'dates.*.event_date' => ['required', 'date'],
             'dates.*.session_slot' => ['required', new Enum(SessionSlot::class)],
             'dates.*.label' => ['nullable', 'string', 'max:60'],
-            'dates.*.venue' => ['nullable', 'string', 'max:160'],
-            'dates.*.city' => ['nullable', 'string', 'max:80'],
-            'dates.*.state' => ['nullable', 'string', 'max:80'],
+            // Required so the studio can price travel and plan the day before
+            // anyone picks up the phone. Asked for as a plain warning on
+            // Continue, never as an asterisk.
+            'dates.*.venue' => ['required', 'string', 'max:160'],
+            'dates.*.city' => ['required', 'string', 'max:80'],
+            'dates.*.state' => ['required', 'string', 'max:80'],
         ];
     }
 
@@ -117,6 +120,11 @@ class BookingRules
         return [
             'dates.required' => __('booking.errors.no_dates'),
             'dates.min' => __('booking.errors.no_dates'),
+            'dates.*.event_date.required' => __('booking.errors.date_required'),
+            'dates.*.session_slot.required' => __('booking.errors.session_required'),
+            'dates.*.venue.required' => __('booking.errors.venue_required'),
+            'dates.*.city.required' => __('booking.errors.city_required'),
+            'dates.*.state.required' => __('booking.errors.state_required'),
             'packageId.required' => __('booking.errors.package_required'),
             'phone.regex' => __('booking.errors.phone'),
             'terms.accepted' => __('booking.errors.terms'),

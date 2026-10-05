@@ -12,6 +12,7 @@ use App\Models\BookingDate;
 use App\Models\Package;
 use App\Models\Sequence;
 use App\Services\AvailabilityService;
+use App\Support\Phone;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
@@ -54,7 +55,11 @@ class CreateBooking
     public function handle(array $data): Booking
     {
         $package = Package::active()->findOrFail($data['package_id']);
-        $quote = $this->calculateQuote->handle($package, $data['add_ons'] ?? []);
+        $quote = $this->calculateQuote->handle(
+            $package,
+            $data['add_ons'] ?? [],
+            max(1, count($data['dates'] ?? [])),
+        );
 
         return DB::transaction(function () use ($data, $package, $quote): Booking {
             /*
@@ -85,12 +90,12 @@ class CreateBooking
                 'reference' => $this->allocateReference(),
                 'package_id' => $package->getKey(),
                 'partner_one_name' => $data['partner_one_name'],
-                'partner_two_name' => $data['partner_two_name'] ?? null,
+                'partner_two_name' => self::optional($data, 'partner_two_name'),
                 'email' => $data['email'],
-                'phone' => $data['phone'],
-                'guest_count' => $data['guest_count'] ?? null,
-                'source' => $data['source'] ?? null,
-                'notes' => $data['notes'] ?? null,
+                'phone' => Phone::format($data['phone']),
+                'guest_count' => self::optional($data, 'guest_count'),
+                'source' => self::optional($data, 'source'),
+                'notes' => self::optional($data, 'notes'),
 
                 // Captured at booking time. A later price change must never
                 // rewrite this enquiry or any invoice raised from it.
@@ -165,5 +170,21 @@ class CreateBooking
             $year,
             str_pad((string) $number, (int) config('booking.sequence_padding'), '0', STR_PAD_LEFT),
         );
+    }
+
+    /**
+     * An optional field, with blank collapsed to null.
+     *
+     * `?? null` is not enough: it replaces null but passes '' straight through.
+     * A form control left on its empty option submits '', and '' is not a
+     * valid EnquirySource — the cast threw a 500 on "Send booking request" for
+     * any couple who had touched "How did you find us?". Normalised here, not
+     * in the wizard, so every caller of this action is covered.
+     */
+    private static function optional(array $data, string $key): mixed
+    {
+        $value = $data[$key] ?? null;
+
+        return blank($value) ? null : $value;
     }
 }

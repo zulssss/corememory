@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests;
 
+use App\Support\Phone;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -27,6 +28,14 @@ class StoreEnquiryRequest extends FormRequest
     }
 
     /** @return array<string, mixed> */
+    /** Judge the digits, not the punctuation — see App\Support\Phone. */
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('phone')) {
+            $this->merge(['phone' => Phone::format($this->input('phone'))]);
+        }
+    }
+
     public function rules(): array
     {
         return [

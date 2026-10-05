@@ -8,6 +8,7 @@ use App\Actions\Bookings\CalculateQuote;
 use App\Actions\Bookings\CreateBooking;
 use App\Actions\Bookings\SendBookingNotifications;
 use App\Enums\EnquirySource;
+use App\Enums\PackageCategory;
 use App\Enums\SessionSlot;
 use App\Exceptions\SlotUnavailableException;
 use App\Http\Requests\BookingRules;
@@ -15,9 +16,11 @@ use App\Models\AddOn;
 use App\Models\Booking;
 use App\Models\Package;
 use App\Services\AvailabilityService;
+use App\Support\Phone;
 use App\ValueObjects\Quote;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Attributes\Title;
 use Livewire\Component;
@@ -57,6 +60,9 @@ class BookingWizard extends Component
 
     public ?int $packageId = null;
 
+    /** Which category tab the package step shows. See showCategory(). */
+    public string $packageCategory = '';
+
     /** @var array<int, int> add_on_id => qty */
     public array $addOns = [];
 
@@ -89,6 +95,12 @@ class BookingWizard extends Component
 
     public ?string $clashError = null;
 
+    /**
+     * The step this request started on. Protected, so Livewire does not carry
+     * it between requests — it is captured fresh in hydrate() every time.
+     */
+    protected ?int $stepAtStart = null;
+
     public function mount(?string $package = null): void
     {
         $this->restore();
@@ -105,6 +117,19 @@ class BookingWizard extends Component
         // comes first — this only pre-selects what they already clicked.
         if ($package !== null && $this->packageId === null) {
             $this->packageId = Package::active()->where('slug', $package)->value('id');
+        }
+
+        // Open on the tab holding the couple's choice, so a package picked on
+        // /packages (or earlier in this visit) is on screen, not behind a tab.
+        $this->packageCategory = $this->package?->category?->value
+            ?? PackageCategory::ordered()[0]->value;
+    }
+
+    /** Switch the package step's category tab. Unknown values are ignored. */
+    public function showCategory(string $category): void
+    {
+        if (PackageCategory::tryFrom($category) !== null) {
+            $this->packageCategory = $category;
         }
     }
 
@@ -146,10 +171,27 @@ class BookingWizard extends Component
         session()->forget(self::SESSION_KEY);
     }
 
-    /** Anything the couple changes is written straight back to the session. */
-    public function updated(): void
+    /**
+     * Anything the couple changes is written straight back to the session, and
+     * a warning on that field clears the moment they fill it — leaving
+     * "Please tell us the venue." under a venue they have just typed reads as
+     * the form not listening.
+     */
+    public function updated(string $property): void
     {
+        // Canonical form on blur, so what the couple sees is what is stored.
+        if ($property === 'phone') {
+            $this->normalisePhone();
+        }
+
+        $this->resetValidation($property);
         $this->persist();
+    }
+
+    /** See App\Support\Phone for why this runs before every validation. */
+    private function normalisePhone(): void
+    {
+        $this->phone = Phone::format($this->phone) ?? '';
     }
 
     /*
@@ -190,14 +232,22 @@ class BookingWizard extends Component
         // Changing the day invalidates any slot already picked for it.
         $this->dates[$this->activeDate]['session_slot'] = null;
         $this->clashError = null;
+        $this->resetValidation("dates.{$this->activeDate}.event_date");
         $this->persist();
+
+        // Next thing to do is pick a session, which sits below the calendar.
+        $this->dispatch('wizard-reveal', target: 'sessions');
     }
 
     public function selectSlot(string $slot): void
     {
         $this->dates[$this->activeDate]['session_slot'] = $slot;
         $this->clashError = null;
+        $this->resetValidation("dates.{$this->activeDate}.session_slot");
         $this->persist();
+
+        // Then the venue, which only appears once a session is chosen.
+        $this->dispatch('wizard-reveal', target: 'venue');
     }
 
     public function addDate(): void
@@ -254,7 +304,11 @@ class BookingWizard extends Component
                 ->all();
         }
 
+        $this->resetValidation('packageId');
         $this->persist();
+
+        // The list is long; the next action is the Continue button under it.
+        $this->dispatch('wizard-reveal', target: 'continue');
     }
 
     public function toggleAddOn(int $addOnId): void
@@ -299,7 +353,13 @@ class BookingWizard extends Component
     /** The live running total. Recomputed on every change, never cached. */
     public function getQuoteProperty(): Quote
     {
-        return app(CalculateQuote::class)->handle($this->package, $this->addOns);
+        // The deposit is charged per event, so the quote needs to know how
+        // many dates the couple has actually chosen.
+        return app(CalculateQuote::class)->handle(
+            $this->package,
+            $this->addOns,
+            max(1, count($this->completedDates())),
+        );
     }
 
     public function getAvailableAddOnsProperty()
@@ -356,12 +416,12 @@ class BookingWizard extends Component
 
     private function validateStep(int $step): void
     {
+        $this->normalisePhone();
+
         $rules = match ($step) {
-            self::STEP_DATES => [
-                'dates' => ['required', 'array', 'min:1'],
-                'dates.*.event_date' => ['required', 'date'],
-                'dates.*.session_slot' => ['required'],
-            ],
+            // The shared definition, so the wizard and every other entry
+            // point agree on what a complete date is.
+            self::STEP_DATES => BookingRules::dates(),
             self::STEP_PACKAGE => BookingRules::package(),
             self::STEP_ADDONS => BookingRules::addOns(),
             self::STEP_DETAILS => BookingRules::details(),
@@ -369,7 +429,27 @@ class BookingWizard extends Component
             default => [],
         };
 
-        $this->validate($rules, BookingRules::messages(), BookingRules::attributes());
+        try {
+            $this->validate($rules, BookingRules::messages(), BookingRules::attributes());
+        } catch (ValidationException $e) {
+            // With several dates, the incomplete one may not be the row on
+            // screen. Open it, so its warnings are actually visible.
+            foreach (array_keys($e->errors()) as $key) {
+                if (preg_match('/^dates\.(\d+)\./', $key, $match)) {
+                    $this->activeDate = (int) $match[1];
+                    break;
+                }
+            }
+
+            // The Continue button is at the foot of the step; the warning may
+            // be a screen above it. Bring the first one into view. Dispatched
+            // here — at the moment validation fails — not from rendering(),
+            // because the error bag outlives the request and would otherwise
+            // re-scroll on every later click.
+            $this->dispatch('wizard-reveal', target: 'error');
+
+            throw $e;
+        }
     }
 
     /** Live clash check. Sets $clashError and returns false if anything is taken. */
@@ -400,8 +480,13 @@ class BookingWizard extends Component
             return;
         }
 
+        $this->normalisePhone();
+
         $this->validate(
-            [...BookingRules::details(), ...BookingRules::package(), ...BookingRules::review()],
+            // Dates are re-validated here too: the step-by-step checks are the
+            // couple's guide, not the guarantee. A request posted straight at
+            // submit must still need a session and a venue.
+            [...BookingRules::dates(), ...BookingRules::details(), ...BookingRules::package(), ...BookingRules::review()],
             BookingRules::messages(),
             BookingRules::attributes(),
         );
@@ -451,7 +536,21 @@ class BookingWizard extends Component
 
         $this->forget();
 
-        $this->redirectRoute('book.thanks', ['reference' => $booking->reference], navigate: true);
+        /*
+         * A FULL page redirect, deliberately not navigate: true.
+         *
+         * With navigate the server returned the redirect correctly and the
+         * browser did nothing: the booking was written, the couple stayed on
+         * the review step seeing no change, and clicked again — five identical
+         * bookings in four seconds. Nothing else on this site uses
+         * wire:navigate, so this was the only consumer of that code path and
+         * the only place it could fail unnoticed.
+         *
+         * An SPA transition buys nothing on a once-per-visit hop to a
+         * confirmation page, and a hard navigation also guarantees the page
+         * cannot be re-submitted.
+         */
+        $this->redirectRoute('book.thanks', ['reference' => $booking->reference]);
     }
 
     /*
@@ -473,10 +572,45 @@ class BookingWizard extends Component
         ];
     }
 
+    /** Not called on the first mount, so the initial page load never scrolls. */
+    public function hydrate(): void
+    {
+        $this->stepAtStart = $this->step;
+    }
+
+    /**
+     * Tell the browser when the step changed, whichever path changed it.
+     *
+     * The Continue button sits at the foot of every step, and Livewire morphs
+     * the DOM in place, so scroll position survives the swap: the couple would
+     * land at the BOTTOM of the next step and have to scroll up to find it.
+     * motion.js answers this event by bringing the new step into view.
+     *
+     * Detected here rather than in nextStep(), previousStep(), goToStep() and
+     * submit()'s clash path individually, so a step change added later cannot
+     * forget it. A failed validation leaves the step unchanged, so the couple
+     * stays put on the error they need to fix.
+     */
+    public function rendering(): void
+    {
+        if ($this->stepAtStart !== null && $this->step !== $this->stepAtStart) {
+            $this->dispatch('wizard-step-changed', step: $this->step);
+        }
+    }
+
     public function render()
     {
+        $packages = Package::active()->ordered()->get();
+
         return view('livewire.booking-wizard', [
-            'packages' => Package::active()->ordered()->get(),
+            'packages' => $packages,
+
+            // Tabs on the package step: only categories that have something
+            // to sell, in pricelist order.
+            'packageTabs' => collect(PackageCategory::ordered())
+                ->filter(fn (PackageCategory $c) => $packages->contains('category', $c))
+                ->values(),
+            'tabPackages' => $packages->where('category', PackageCategory::tryFrom($this->packageCategory))->values(),
             'sources' => EnquirySource::cases(),
             'slots' => SessionSlot::cases(),
         ]);
