@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support;
 
 use App\Models\Setting;
+use App\ValueObjects\Money;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -62,7 +63,7 @@ final class Settings
         'social.tiktok' => null,
 
         // Commercial terms
-        'booking.deposit_percent' => null,   // falls back to config/booking.php
+        'booking.deposit_per_event_cents' => null,   // falls back to config/booking.php
         'booking.payment_terms' => null,
         'booking.cancellation_policy' => null,
 
@@ -140,10 +141,15 @@ final class Settings
         Cache::forget(self::CACHE_KEY);
     }
 
-    /** The deposit percentage, preferring the owner's setting over config. */
-    public static function depositPercent(): float
+    /**
+     * The flat deposit charged per event, preferring the owner's setting.
+     *
+     * Per EVENT, not per booking: the published terms price it that way, so a
+     * solemnisation plus a reception is two deposits.
+     */
+    public static function depositPerEvent(): Money
     {
-        return (float) (self::get('booking.deposit_percent')
-            ?? config('booking.default_deposit_percent'));
+        return new Money((int) (self::get('booking.deposit_per_event_cents')
+            ?? config('booking.default_deposit_per_event_cents')));
     }
 }

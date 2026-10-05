@@ -110,12 +110,12 @@ return [
         'three' => 'Booking took ten minutes. We picked our date, saw the total, and that was it.',
     ],
 
-    // Placeholder contact details — replaced from admin settings in Phase 2.
-    'contact' => [
-        'phone' => '+60 12-345 6789',
-        'phone_href' => '+60123456789',
-        'email' => 'hello@corememory.test',
-    ],
+    /*
+     * Contact details deliberately do NOT live here. They are owner-editable
+     * settings (contact.phone, contact.email, social.instagram) read straight
+     * from Settings, so an admin edit is reflected everywhere at once. The
+     * hardcoded values that used to sit here were fake and unreachable.
+     */
 
     'social' => [
         'instagram' => 'Instagram',
@@ -153,10 +153,26 @@ return [
         'hours' => ':count hours',
         'choose' => 'Choose this package',
 
-        'deposit_note' => 'A :percent% deposit confirms your date. The balance is due before the event.',
+        'deposit_note' => 'A :amount deposit per event locks your date. The balance is due 2 days before the event.',
+
+        // The pricelist is organised by what is being captured, because that
+        // is the choice a couple makes first.
+        'categories' => [
+            'photo' => 'Photo',
+            'video' => 'Video',
+            'photo_video' => 'Photo & Video',
+            'session' => 'Sessions',
+        ],
+
+        'category_notes' => [
+            'photo' => 'A single event is your solemnisation or your reception. A double event is both, and buys nine hours instead of six.',
+            'video' => 'A single event is your solemnisation or your reception. A double event is both, and buys nine hours instead of six.',
+            'photo_video' => 'Both crews on the same day. A single event is your solemnisation or your reception; a double event is both.',
+            'session' => 'Standalone shoots, away from the wedding day itself.',
+        ],
 
         'honest_note_label' => 'What can change a quote',
-        'honest_note' => 'Three things move a price: how far we travel, how much of the day we cover, and whether your date falls in a peak period. Everything above assumes travel within the Klang Valley. Tell us your date and venue and we will confirm the exact figure — no obligation, and no pressure.',
+        'honest_note' => 'Two things move a price: how much of the day we cover, and how far we travel. Transportation is added based on your venue, and we are happy to travel anywhere. Tell us your date and venue and we will confirm the exact figure — no obligation, and no pressure.',
     ],
 
     'sections' => [

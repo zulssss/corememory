@@ -4,99 +4,313 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Enums\PackageCategory;
 use App\Models\Package;
 use Illuminate\Database\Seeder;
 
 /**
- * Demo packages. Prices and inclusions are placeholders — the studio replaces
- * them in Admin → Packages. They are shaped like real Malaysian wedding
- * packages so the pricing page can be judged properly.
+ * CoreMemory's real published pricelist.
  *
- * Every inclusion the brief asks for is stated explicitly: hours of coverage,
- * number of edited photos, crew on site, delivery turnaround, raw files,
- * travel radius, album. A couple should never have to ask what they get.
+ * Two axes, straight from the studio's pricelist: what is captured (photo,
+ * video, or both) and how many events are covered. A SINGLE event is one of
+ * the solemnisation or the reception; a DOUBLE event is both, and buys nine
+ * hours instead of six. Sessions are standalone shoots, not wedding days.
+ *
+ * Inclusions are reproduced from the pricelist. Only clear misspellings were
+ * corrected ("Potraiture" -> "Portraiture"); the studio's wording and order
+ * are otherwise untouched.
  */
 class PackageSeeder extends Seeder
 {
+    /** Repeated verbatim across the photo packages. */
+    private const PHOTO_BASE = [
+        'Shoot and Edit',
+        'Unlimited Shoot',
+        'Best Edited Photo',
+        'Copy Via Google Photo Share',
+        'Free Outdoor | Portraiture',
+    ];
+
+    private const VIDEO_BASE = [
+        'Colour Correction',
+        'Copy Via Google Drive',
+        'Free Outdoor | Portraiture',
+    ];
+
     private const PACKAGES = [
+        /* ---------------- PHOTO ---------------- */
         [
-            'name' => 'Nikah Essentials',
-            'price_cents' => 380000,
-            'price_is_from' => true,
+            'name' => 'Photo Basic — Single Event',
+            'category' => 'photo',
+            'price_cents' => 140000,
+            'duration_hours' => 6,
+            'description' => 'Solemnisation or reception.',
+            'inclusions' => ['1 Photographer', 'Up to 6 Hours Coverage', ...self::PHOTO_BASE],
+        ],
+        [
+            'name' => 'Photo Plus — Single Event',
+            'category' => 'photo',
+            'price_cents' => 200000,
+            'duration_hours' => 6,
+            'description' => 'Solemnisation or reception.',
+            'inclusions' => ['2 Photographer', 'Up to 6 Hours Coverage', ...self::PHOTO_BASE],
+        ],
+        [
+            'name' => 'Photo Basic — Double Event',
+            'category' => 'photo',
+            'price_cents' => 180000,
+            'duration_hours' => 9,
+            'description' => 'Solemnisation and reception.',
+            'inclusions' => ['1 Photographer', 'Up to 9 Hours Coverage', ...self::PHOTO_BASE],
+        ],
+        [
+            'name' => 'Photo Plus — Double Event',
+            'category' => 'photo',
+            'price_cents' => 300000,
+            'duration_hours' => 9,
+            'description' => 'Solemnisation and reception.',
+            'inclusions' => [
+                '2 Photographer',
+                'Up to 9 Hours Coverage',
+                'FREE Pre/Post Wedding Session Photo',
+                ...self::PHOTO_BASE,
+            ],
+        ],
+
+        /* ---------------- VIDEO ---------------- */
+        [
+            'name' => 'Video Basic — Single Event',
+            'category' => 'video',
+            'price_cents' => 140000,
+            'duration_hours' => 6,
+            'description' => 'Solemnisation or reception.',
+            'inclusions' => ['1 Videographer', 'Up to 6 Hours Coverage', '3-5 Minutes Highlight', ...self::VIDEO_BASE],
+        ],
+        [
+            'name' => 'Video Plus — Single Event',
+            'category' => 'video',
+            'price_cents' => 200000,
+            'duration_hours' => 6,
+            'description' => 'Solemnisation or reception.',
+            'inclusions' => [
+                '2 Videographer',
+                'Up to 6 Hours Coverage',
+                '30 Second Teaser',
+                '3-5 Minutes Highlight',
+                ...self::VIDEO_BASE,
+            ],
+        ],
+        [
+            'name' => 'Video Basic — Double Event',
+            'category' => 'video',
+            'price_cents' => 180000,
+            'duration_hours' => 9,
+            'description' => 'Solemnisation and reception.',
+            'inclusions' => [
+                '1 Videographer',
+                'Up to 9 Hours Coverage',
+                '30 Second Teaser',
+                '3-5 Minutes Highlight',
+                ...self::VIDEO_BASE,
+            ],
+        ],
+        [
+            'name' => 'Video Plus — Double Event',
+            'category' => 'video',
+            'price_cents' => 300000,
+            'duration_hours' => 9,
+            'description' => 'Solemnisation and reception.',
+            'inclusions' => [
+                '2 Videographer',
+                'Up to 9 Hours Coverage',
+                'FREE Pre/Post Wedding Session Video',
+                '30 Second Teaser',
+                '3-5 Minutes Highlight',
+                ...self::VIDEO_BASE,
+            ],
+        ],
+
+        /* ---------------- PHOTO & VIDEO ---------------- */
+        [
+            'name' => 'Photo & Video Basic — Single Event',
+            'category' => 'photo_video',
+            'price_cents' => 280000,
+            'duration_hours' => 6,
+            'description' => 'Solemnisation or reception.',
+            'inclusions' => [
+                '1 Photographer & 1 Videographer',
+                'Up to 6 Hours Coverage',
+                'Unlimited Shoot',
+                'Best Edited Photo',
+                'Colour Correction',
+                '3-5 Minutes Highlight',
+                'Copy Via Google Photo/Drive Share',
+                'Free Outdoor | Portraiture',
+            ],
+        ],
+        [
+            'name' => 'Photo & Video Plus — Single Event',
+            'category' => 'photo_video',
+            'price_cents' => 390000,
+            'duration_hours' => 6,
+            'description' => 'Solemnisation or reception.',
+            'inclusions' => [
+                '2 Photographer & 2 Videographer',
+                'Up to 6 Hours Coverage',
+                'Unlimited Shoot',
+                'Best Edited Photo',
+                'Colour Correction',
+                '30 Second Teaser',
+                '3-5 Minutes Highlight',
+                'Copy Via Google Photo/Drive Share',
+                'Free Outdoor | Portraiture',
+            ],
+        ],
+        [
+            'name' => 'Photo & Video Basic — Double Event',
+            'category' => 'photo_video',
+            'price_cents' => 360000,
+            'duration_hours' => 9,
+            'description' => 'Solemnisation and reception.',
+            'inclusions' => [
+                '1 Photographer & 1 Videographer',
+                'Up to 9 Hours Coverage',
+                'Unlimited Shoot',
+                'Best Edited Photo',
+                'Colour Correction',
+                '30 Second Teaser',
+                '3-5 Minutes Highlight',
+                'Copy Via Google Photo/Drive Share',
+                'Free Outdoor | Portraiture',
+            ],
+        ],
+        [
+            'name' => 'Photo & Video Plus — Double Event',
+            'category' => 'photo_video',
+            'price_cents' => 600000,
+            'duration_hours' => 9,
+            'description' => 'Solemnisation and reception.',
+            'inclusions' => [
+                '2 Photographer & 2 Videographer',
+                'Up to 9 Hours Coverage',
+                'FREE Pre/Post Wedding Session Photo & Video',
+                'Unlimited Shoot',
+                'Best Edited Photo',
+                'Colour Correction',
+                '30 Second Teaser',
+                '3-5 Minutes Highlight',
+                'Copy Via Google Photo/Drive Share',
+                'Free Outdoor | Portraiture',
+            ],
+        ],
+
+        /* ---------------- SESSIONS ---------------- */
+        [
+            'name' => 'Pre/Post Wedding — Photo',
+            'category' => 'session',
+            'price_cents' => 90000,
+            'duration_hours' => 2,
+            'inclusions' => [
+                '2 Hours Max Coverage',
+                '1 Photographer',
+                'Shoot and Edits',
+                'Unlimited Shoot',
+                'Best Edited Photo',
+                'Send by Google Photo',
+            ],
+        ],
+        [
+            'name' => 'Pre/Post Wedding — Video',
+            'category' => 'session',
+            'price_cents' => 90000,
+            'duration_hours' => 2,
+            'inclusions' => [
+                '2 Hours Max Coverage',
+                '1 Videographer',
+                'Colour Correction',
+                '1-2 Minutes Duration',
+                'Send by Google Drive',
+            ],
+        ],
+        [
+            'name' => 'Maternity — Photo',
+            'category' => 'session',
+            'price_cents' => 90000,
+            'duration_hours' => 2,
+            'inclusions' => [
+                '2 Hours Max Coverage',
+                '1 Photographer',
+                'Shoot and Edits',
+                'Unlimited Shoot',
+                'Best Edited Photo',
+                'Send by Google Photo',
+            ],
+        ],
+        [
+            'name' => 'Maternity — Video',
+            'category' => 'session',
+            'price_cents' => 90000,
+            'duration_hours' => 2,
+            'inclusions' => [
+                '2 Hours Max Coverage',
+                '1 Videographer',
+                'Colour Correction',
+                '1-2 Minutes Duration',
+                'Send by Google Drive',
+            ],
+        ],
+        [
+            'name' => 'Engagement — Photo',
+            'category' => 'session',
+            'price_cents' => 90000,
             'duration_hours' => 4,
-            'is_popular' => false,
-            'description' => 'Solemnisation coverage for couples who want the ceremony documented properly, without a full-day crew.',
             'inclusions' => [
-                '4 hours of coverage',
-                '300+ edited photographs',
-                '1 photographer on site',
-                'Delivered in 3 weeks',
-                'Raw files not included',
-                'Travel within Klang Valley included',
-                'Online gallery for 12 months',
+                '4 Hours Max Coverage',
+                '1 Photographer',
+                'Shoot and Edits',
+                'Unlimited Shoot',
+                'Free Outdoor | Portraiture',
+                'Best Edited Photo',
+                'Send by Google Photo',
             ],
         ],
         [
-            'name' => 'Wedding Classic',
-            'price_cents' => 680000,
-            'price_is_from' => false,
-            'duration_hours' => 8,
-            'is_popular' => true,
-            'description' => 'Our most-booked package. Full-day coverage with a second shooter, from morning preparations to the last of the evening guests.',
-            'inclusions' => [
-                '8 hours of coverage',
-                '600+ edited photographs',
-                '2 photographers on site',
-                'Delivered in 4 weeks',
-                'Raw files included on request',
-                'Travel within Klang Valley included',
-                '20-page layflat album',
-                'Online gallery for 24 months',
-            ],
-        ],
-        [
-            'name' => 'Wedding Signature',
-            'price_cents' => 980000,
-            'price_is_from' => false,
-            'duration_hours' => 12,
-            'is_popular' => false,
-            'description' => 'Photo and video across the whole day, with a same-day edit screened at the reception.',
-            'inclusions' => [
-                '12 hours of coverage',
-                '900+ edited photographs',
-                '2 photographers and 2 videographers',
-                'Same-day edit screened at the reception',
-                '5-minute highlight film',
-                'Delivered in 6 weeks',
-                'Raw files included',
-                'Travel anywhere in Peninsular Malaysia included',
-                '40-page layflat album',
-                'Online gallery for 24 months',
-            ],
-        ],
-        [
-            'name' => 'Pre-wedding Story',
-            'price_cents' => 250000,
-            'price_is_from' => true,
+            'name' => 'Engagement — Video',
+            'category' => 'session',
+            'price_cents' => 90000,
             'duration_hours' => 4,
-            'is_popular' => false,
-            'description' => 'A relaxed half-day session at one location, before the wedding itself.',
             'inclusions' => [
-                '4 hours of coverage',
-                '150+ edited photographs',
-                '1 photographer on site',
-                'One location',
-                'Delivered in 2 weeks',
-                'Raw files not included',
-                'Travel within Klang Valley included',
+                '4 Hours Max Coverage',
+                '1 Videographer',
+                'Colour Correction',
+                '2-3 Minutes Duration',
+                'Free Outdoor | Portraiture',
+                'Send by Google Drive',
             ],
         ],
     ];
 
     public function run(): void
     {
-        foreach (self::PACKAGES as $index => $package) {
-            Package::create([...$package, 'is_active' => true, 'sort_order' => $index]);
+        $order = array_flip(array_column(PackageCategory::ordered(), 'value'));
+        $keep = [];
+
+        foreach (self::PACKAGES as $i => $package) {
+            $slug = str($package['name'])->slug()->value();
+            $keep[] = $slug;
+
+            // updateOrCreate keyed on the slug so reseeding is idempotent and
+            // never orphans a booking that already points at this package.
+            Package::updateOrCreate(['slug' => $slug], [
+                ...$package,
+                'slug' => $slug,
+                // Category first, then pricelist order within it.
+                'sort_order' => ($order[$package['category']] * 100) + $i,
+                'is_active' => true,
+            ]);
         }
+
+        // Anything left over is placeholder data from the original build.
+        Package::whereNotIn('slug', $keep)->update(['is_active' => false]);
     }
 }

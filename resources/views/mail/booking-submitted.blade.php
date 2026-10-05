@@ -40,7 +40,7 @@
 | {{ $addOn->name }}@if ($addOn->pivot->qty > 1) × {{ $addOn->pivot->qty }}@endif | {{ (new App\ValueObjects\Money($addOn->pivot->line_total_cents))->formatCompact() }} |
 @endforeach
 | **{{ __('booking.wizard.running_total') }}** | **{{ $booking->estimated_total_cents->formatCompact() }}** |
-| {{ __('booking.wizard.deposit_line', ['percent' => (int) App\Support\Settings::depositPercent()]) }} | {{ $booking->deposit_cents->formatCompact() }} |
+| {{ __('booking.wizard.deposit_line', ['amount' => App\Support\Settings::depositPerEvent()->formatCompact()]) }} | {{ $booking->deposit_cents->formatCompact() }} |
 
 {{ __('mail.studio.footer') }}
 </x-mail::message>

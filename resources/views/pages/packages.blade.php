@@ -19,7 +19,7 @@
 >
 
     {{-- Intro --}}
-    <x-section size="lg" class="pb-0">
+    <x-section size="intro" class="pb-0">
         <div class="grid gap-8 md:grid-cols-12">
             <div class="md:col-span-7">
                 <x-reveal>
@@ -44,8 +44,15 @@
          MOBILE — stacked cards
          --------------------------------------------------------------- --}}
     <x-section class="md:hidden">
-        <div class="flex flex-col gap-10">
-            @foreach ($packages as $i => $package)
+        @foreach ($groups as $group)
+            <div class="mb-12 last:mb-0">
+                <x-reveal>
+                    <h2 class="rule-b pb-3 text-statement font-medium text-ink">{{ $group['category']->label() }}</h2>
+                    <p class="mt-3 text-body-sm text-ink-muted">{{ $group['category']->description() }}</p>
+                </x-reveal>
+
+                <div class="mt-8 flex flex-col gap-10">
+            @foreach ($group['packages'] as $i => $package)
                 <x-reveal>
                     <article @class(['rule-all p-6', 'border-ink' => $package->is_popular])>
                         <div class="flex items-baseline justify-between gap-4">
@@ -82,7 +89,9 @@
                     </article>
                 </x-reveal>
             @endforeach
-        </div>
+                </div>
+            </div>
+        @endforeach
     </x-section>
 
     {{-- ---------------------------------------------------------------
@@ -91,17 +100,28 @@
          each price is tied to its package by row and column headers.
          --------------------------------------------------------------- --}}
     <x-section class="hidden md:block" :label="__('site.packages.compare')">
+        {{-- One table per coverage type. Eighteen packages in a single table
+             would be eighteen columns wide; four or six is comparable. --}}
+        @foreach ($groups as $group)
         @php
-            // Union of every inclusion across packages, preserving order of
-            // first appearance, so the comparison rows line up.
+            $packages = $group['packages'];
+
+            // Union of every inclusion across THIS category, preserving order
+            // of first appearance, so the comparison rows line up.
             $allInclusions = collect($packages)
                 ->flatMap(fn ($p) => $p->inclusions ?? [])
                 ->unique()
                 ->values();
         @endphp
 
-        <div class="overflow-x-auto">
-            <table class="w-full min-w-[56rem] border-collapse text-left">
+        <div class="mb-16 last:mb-0">
+            <x-reveal>
+                <h2 class="text-statement font-medium text-ink">{{ $group['category']->label() }}</h2>
+                <p class="mt-2 max-w-measure text-body-sm text-ink-muted">{{ $group['category']->description() }}</p>
+            </x-reveal>
+
+        <div class="mt-6 overflow-x-auto">
+            <table class="w-full min-w-[48rem] border-collapse text-left">
                 <caption class="sr-only">{{ __('site.packages.compare') }}</caption>
 
                 <thead>
@@ -178,6 +198,8 @@
                 </tbody>
             </table>
         </div>
+        </div>
+        @endforeach
     </x-section>
 
     {{-- ---------------------------------------------------------------
@@ -238,7 +260,7 @@
                 </x-reveal>
                 <x-reveal>
                     <p class="mt-4 max-w-measure text-body-sm text-ink-muted">
-                        {{ __('site.packages.deposit_note', ['percent' => (int) $depositPercent]) }}
+                        {{ __('site.packages.deposit_note', ['amount' => $depositPerEvent->formatCompact()]) }}
                     </p>
                 </x-reveal>
                 <x-reveal>

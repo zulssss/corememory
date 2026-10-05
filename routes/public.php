@@ -10,6 +10,7 @@ use App\Http\Controllers\Public\HomeController;
 use App\Http\Controllers\Public\JournalController;
 use App\Http\Controllers\Public\PackageController;
 use App\Http\Controllers\Public\SitemapController;
+use App\Http\Controllers\Public\TermsController;
 use App\Http\Controllers\Public\WorkController;
 use App\Livewire\BookingWizard;
 use Illuminate\Support\Facades\Route;
@@ -42,6 +43,9 @@ Route::get('/book/thank-you/{reference}', [BookingController::class, 'thanks'])-
 
 // About, journal and contact — Phase 5
 Route::get('/about', AboutController::class)->name('about');
+
+// The studio's booking terms, published rather than sent on request.
+Route::get('/terms', TermsController::class)->name('terms');
 
 Route::get('/journal', [JournalController::class, 'index'])->name('journal');
 Route::get('/journal/{post}', [JournalController::class, 'show'])->name('journal.show');

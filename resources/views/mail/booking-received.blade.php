@@ -41,7 +41,7 @@
 | {{ __('booking.wizard.package_line') }} | {{ $booking->subtotal_cents->formatCompact() }} |
 | {{ __('booking.wizard.add_ons_line') }} | {{ $booking->addons_total_cents->formatCompact() }} |
 | **{{ __('booking.wizard.running_total') }}** | **{{ $booking->estimated_total_cents->formatCompact() }}** |
-| {{ __('booking.wizard.deposit_line', ['percent' => (int) App\Support\Settings::depositPercent()]) }} | {{ $booking->deposit_cents->formatCompact() }} |
+| {{ __('booking.wizard.deposit_line', ['amount' => App\Support\Settings::depositPerEvent()->formatCompact()]) }} | {{ $booking->deposit_cents->formatCompact() }} |
 | {{ __('booking.wizard.balance_line') }} | {{ $booking->balance()->formatCompact() }} |
 
 {{-- REQUIRED: the availability disclaimer, in the confirmation email. --}}

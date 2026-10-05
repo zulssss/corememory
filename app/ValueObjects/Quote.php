@@ -26,7 +26,8 @@ final readonly class Quote
         public Money $addOnsTotal,
         public Money $total,
         public Money $deposit,
-        public float $depositPercent,
+        public Money $depositPerEvent,
+        public int $eventCount,
     ) {}
 
     public function balance(): Money
@@ -39,7 +40,7 @@ final readonly class Quote
         return $this->lines !== [];
     }
 
-    public static function empty(float $depositPercent): self
+    public static function empty(Money $depositPerEvent, int $eventCount = 1): self
     {
         return new self(
             package: null,
@@ -48,7 +49,8 @@ final readonly class Quote
             addOnsTotal: Money::zero(),
             total: Money::zero(),
             deposit: Money::zero(),
-            depositPercent: $depositPercent,
+            depositPerEvent: $depositPerEvent,
+            eventCount: $eventCount,
         );
     }
 }

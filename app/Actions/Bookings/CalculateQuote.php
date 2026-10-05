@@ -22,13 +22,17 @@ class CalculateQuote
 {
     /**
      * @param  array<int, int>  $addOnQuantities  add_on_id => qty
+     * @param  int  $eventCount  how many events the booking covers. The deposit
+     *                           is charged per event, so a solemnisation plus a
+     *                           reception is two deposits.
      */
-    public function handle(?Package $package, array $addOnQuantities = []): Quote
+    public function handle(?Package $package, array $addOnQuantities = [], int $eventCount = 1): Quote
     {
-        $depositPercent = Settings::depositPercent();
+        $depositPerEvent = Settings::depositPerEvent();
+        $eventCount = max(1, $eventCount);
 
         if (! $package instanceof Package) {
-            return Quote::empty($depositPercent);
+            return Quote::empty($depositPerEvent, $eventCount);
         }
 
         $subtotal = $package->price_cents;
@@ -62,16 +66,28 @@ class CalculateQuote
 
         $total = $subtotal->plus($addOnsTotal);
 
+        /*
+         * A flat amount per event, never a percentage — the studio's published
+         * terms price it that way, so the deposit does not scale with the
+         * package. Capped at the total: a deposit larger than the job itself
+         * would make the balance negative and the two invoices stop
+         * reconciling to the contract value.
+         */
+        $deposit = $depositPerEvent->times($eventCount);
+
+        if ($deposit->cents > $total->cents) {
+            $deposit = $total;
+        }
+
         return new Quote(
             package: $package,
             lines: $lines,
             subtotal: $subtotal,
             addOnsTotal: $addOnsTotal,
             total: $total,
-            // percent() rounds half-up, so deposit + balance always equals
-            // the total exactly — no stray sen to explain to a client.
-            deposit: $total->percent($depositPercent),
-            depositPercent: $depositPercent,
+            deposit: $deposit,
+            depositPerEvent: $depositPerEvent,
+            eventCount: $eventCount,
         );
     }
 }

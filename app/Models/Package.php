@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Casts\Money as MoneyCast;
+use App\Enums\PackageCategory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -17,7 +18,7 @@ class Package extends Model
     use HasFactory, HasSlug;
 
     protected $fillable = [
-        'name', 'slug', 'price_cents', 'price_is_from', 'duration_hours',
+        'name', 'slug', 'category', 'price_cents', 'price_is_from', 'duration_hours',
         'inclusions', 'description', 'is_popular', 'is_active', 'sort_order',
     ];
 
@@ -25,6 +26,7 @@ class Package extends Model
     protected function casts(): array
     {
         return [
+            'category' => PackageCategory::class,
             'price_cents' => MoneyCast::class,
             'price_is_from' => 'boolean',
             'inclusions' => 'array',

@@ -8,21 +8,26 @@ use App\Support\Settings;
 use Illuminate\Database\Seeder;
 
 /**
- * Seeds the owner-editable settings with demo values.
+ * Seeds the owner-editable settings.
  *
- * Everything here is placeholder content, replaced by the studio in
- * Admin → Settings. No real contact details, SSM number or bank account.
+ * The marketing copy and booking terms are CoreMemory's own words, taken from
+ * the published pricelist with only clear misspellings corrected.
+ *
+ * STILL PLACEHOLDER, because the pricelist does not state them: the contact
+ * email and phone, the TikTok URL, and every invoice.* value. The pricelist
+ * gives only an Instagram handle. An invoice carrying the fake SSM number
+ * below must never reach a client.
  */
 class SettingsSeeder extends Seeder
 {
     public function run(): void
     {
         Settings::setMany([
-            'hero.headline' => 'We photograph weddings the way they actually feel — unhurried, honest, and yours.',
-            'hero.location' => 'Kuala Lumpur, Malaysia',
-            'statement.eyebrow' => 'Based in Kuala Lumpur, working across Malaysia',
-            'statement.lead' => 'At CoreMemory, we believe a wedding photograph should outlive the day it was taken.',
-            'statement.rest' => 'So we publish our prices openly, we tell you what is included before you ask, and we spend our time photographing your day rather than negotiating it.',
+            'hero.headline' => 'We believe moment cannot be recreated, and words cannot describe like photograph does.',
+            'hero.location' => 'Malaysia',
+            'statement.eyebrow' => 'We are happy to travel anywhere to document your story',
+            'statement.lead' => 'As a visual storyteller, we value the simplicity of raw emotion and candid intimacy.',
+            'statement.rest' => 'Your story is the heart of our photograph. That is why we are committed to tell the story of each wedding for you to remember. From the grand scenes to the gentle touch. Let\'s start on a journey and create something beautiful together.',
         ], group: 'brand');
 
         Settings::setMany([
@@ -37,23 +42,23 @@ class SettingsSeeder extends Seeder
         ], group: 'brand');
 
         Settings::setMany([
-            'contact.email' => 'hello@corememory.test',
-            'contact.phone' => '+60 12-345 6789',
-            'contact.whatsapp' => '60123456789',
-            'contact.address' => "Lot 12, Jalan Placeholder\n50450 Kuala Lumpur",
-            'social.instagram' => 'https://instagram.com/',
-            'social.tiktok' => 'https://tiktok.com/',
+            'contact.email' => '',        // not on the pricelist
+            'contact.phone' => '',        // not on the pricelist
+            'contact.whatsapp' => '',     // not on the pricelist
+            'contact.address' => '',      // not on the pricelist
+            'social.instagram' => 'https://instagram.com/corememoryy_',
+            'social.tiktok' => '',   // not given on the pricelist
         ], group: 'contact');
 
         Settings::setMany([
-            'booking.deposit_percent' => 30,
-            'booking.payment_terms' => 'A 30% deposit confirms your date. The balance is due 7 days before the event.',
-            'booking.cancellation_policy' => 'Deposits are non-refundable. Dates may be moved once, subject to availability.',
+            'booking.deposit_per_event_cents' => 10000,
+            'booking.payment_terms' => 'Prices are as stated and your date is locked by deposit. A RM100 deposit per event locks the date. Full payment of the balance is due 2 days before the event.',
+            'booking.cancellation_policy' => 'Deposits are non-refundable. A deposit can be carried forward, depending on availability, or changed to another type of shoot. Any cancellation must be made 1-2 months before the event.',
         ], group: 'booking');
 
         Settings::setMany([
-            'seo.title' => 'CoreMemory — Wedding photography in Malaysia',
-            'seo.description' => 'Wedding photography and videography in Malaysia. Transparent pricing, published packages, and a booking process that starts with your date.',
+            'seo.title' => 'CoreMemory — Wedding photography and videography in Malaysia',
+            'seo.description' => 'Wedding photography and videography in Malaysia. Every price published openly, from RM900 sessions to full photo and video coverage. We are happy to travel anywhere to document your story.',
         ], group: 'seo');
 
         // Placeholder business details. The studio enters real values before

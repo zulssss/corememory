@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
+use App\Enums\PackageCategory;
 use App\Models\Package;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -16,6 +17,7 @@ class PackageFactory extends Factory
     {
         return [
             'name' => 'Package '.$this->faker->unique()->word(),
+            'category' => PackageCategory::Photo,
             'price_cents' => $this->faker->numberBetween(20, 120) * 10000,
             'price_is_from' => false,
             'duration_hours' => $this->faker->randomElement([4, 6, 8, 10]),

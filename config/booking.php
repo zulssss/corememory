@@ -72,7 +72,14 @@ return [
     | Default only. The owner overrides this in admin settings; this value is
     | the fallback when no setting has been saved yet.
     */
-    'default_deposit_percent' => (float) env('BOOKING_DEPOSIT_PERCENT', 30),
+    /*
+     * A FLAT deposit per event, not a percentage of the total.
+     *
+     * The studio's published terms read "RM100 - RM200 deposit per event to
+     * lock the date", so the deposit does not scale with the package. A
+     * two-event booking (solemnisation and reception) pays twice.
+     */
+    'default_deposit_per_event_cents' => (int) env('BOOKING_DEPOSIT_PER_EVENT_CENTS', 10000),
 
     /*
     |--------------------------------------------------------------------------

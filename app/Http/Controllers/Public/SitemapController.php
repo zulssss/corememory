@@ -39,6 +39,7 @@ class SitemapController extends Controller
                 ['about', 0.6, Url::CHANGE_FREQUENCY_YEARLY],
                 ['journal', 0.6, Url::CHANGE_FREQUENCY_WEEKLY],
                 ['contact', 0.5, Url::CHANGE_FREQUENCY_YEARLY],
+                ['terms', 0.3, Url::CHANGE_FREQUENCY_YEARLY],
             ] as [$route, $priority, $frequency]) {
                 $sitemap->add(
                     Url::create(route($route))
