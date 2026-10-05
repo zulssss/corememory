@@ -1,0 +1,88 @@
+#!/bin/bash
+#
+# CoreMemory — the Vercel REVIEW copy. Not the real site.
+#
+#   ./scripts/vercel db       copy this machine's database into the hosted MySQL
+#                             and give the admin accounts new random passwords
+#   ./scripts/vercel deploy   bundle the site with its photos and deploy it
+#
+# Credentials come from .env.vercel and the database CA from .vercel-ca.pem,
+# both git-ignored. See DEPLOYMENT.md → "Review copy on Vercel".
+#
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+REPO="$PWD"
+BUILD="$HOME/.corememory/vercel/corememory"   # folder name = Vercel project name
+XAMPP="/Applications/XAMPP/xamppfiles"
+CNF="$HOME/.corememory/my.cnf"
+
+[ -f .env.vercel ] || { echo "Missing .env.vercel — see DEPLOYMENT.md"; exit 1; }
+[ -f .vercel-ca.pem ] || { echo "Missing .vercel-ca.pem — download the CA certificate from Aiven"; exit 1; }
+set -a; source .env.vercel; set +a
+for v in DB_HOST DB_PORT DB_DATABASE DB_USERNAME DB_PASSWORD; do
+    [ -n "${!v:-}" ] || { echo "$v is empty in .env.vercel"; exit 1; }
+done
+
+# Generated once, then kept so sessions and signed invoice links survive redeploys.
+if [ -z "${APP_KEY:-}" ]; then
+    APP_KEY="base64:$(openssl rand -base64 32)"
+    sed -i '' "s|^APP_KEY=.*|APP_KEY=${APP_KEY}|" .env.vercel
+fi
+
+remote_env() {
+    DB_CONNECTION=mysql DB_HOST="$DB_HOST" DB_PORT="$DB_PORT" DB_DATABASE="$DB_DATABASE" \
+    DB_USERNAME="$DB_USERNAME" DB_PASSWORD="$DB_PASSWORD" MYSQL_ATTR_SSL_CA="$REPO/.vercel-ca.pem" \
+    CACHE_STORE=array "$@"
+}
+
+case "${1:-}" in
+db)
+    echo "→ creating tables on the hosted database"
+    remote_env php artisan migrate --force
+
+    echo "→ dumping this machine's content"
+    DUMP="$(mktemp -t corememory).sql"
+    "$XAMPP/bin/mysqldump" --defaults-file="$CNF" -u root corememory \
+        --no-create-info --skip-triggers --complete-insert --skip-add-locks --hex-blob \
+        --ignore-table=corememory.migrations --ignore-table=corememory.cache \
+        --ignore-table=corememory.cache_locks --ignore-table=corememory.sessions \
+        --ignore-table=corememory.jobs --ignore-table=corememory.job_batches \
+        --ignore-table=corememory.failed_jobs --ignore-table=corememory.password_reset_tokens \
+        > "$DUMP"
+
+    echo "→ importing"
+    remote_env php scripts/vercel-import.php "$DUMP"
+    rm -f "$DUMP"
+    ;;
+deploy)
+    echo "→ assembling $BUILD"
+    mkdir -p "$BUILD"
+    rsync -a --delete \
+        --exclude=.vercel --exclude=.git --exclude=.gitignore --exclude='.env*' --exclude=.vercel-ca.pem \
+        --exclude=/vendor --exclude=/node_modules --exclude=/tests --exclude=/public/hot \
+        --exclude=/public/storage --exclude=/storage/logs/ --exclude=/storage/framework/ \
+        --exclude=/storage/app/private/livewire-tmp/ \
+        "$REPO/" "$BUILD/"
+    # Photos as static files (served by Vercel's CDN, not PHP). The copy under
+    # storage/ stays for the function, which reads the tiny blur placeholders.
+    rsync -a --delete "$REPO/storage/app/public/" "$BUILD/public/storage/"
+    cp .vercel-ca.pem "$BUILD/database/ca.pem"
+    printf '.env*\n' > "$BUILD/.vercelignore"
+
+    echo "→ deploying"
+    URL_ARG=()
+    [ -n "${APP_URL:-}" ] && URL_ARG=(-e "APP_URL=$APP_URL")
+    npx --yes vercel@latest deploy --prod --yes --cwd "$BUILD" \
+        -e APP_NAME=CoreMemory -e APP_ENV=production -e APP_DEBUG=false -e "APP_KEY=$APP_KEY" \
+        "${URL_ARG[@]}" \
+        -e SITE_NOINDEX=true -e 'TRUSTED_PROXIES=*' \
+        -e DB_CONNECTION=mysql -e "DB_HOST=$DB_HOST" -e "DB_PORT=$DB_PORT" -e "DB_DATABASE=$DB_DATABASE" \
+        -e "DB_USERNAME=$DB_USERNAME" -e "DB_PASSWORD=$DB_PASSWORD" \
+        -e CACHE_STORE=database -e SESSION_DRIVER=database -e QUEUE_CONNECTION=sync \
+        -e QUEUE_CONVERSIONS_BY_DEFAULT=false -e MAIL_MAILER=log \
+        -e MEDIA_DISK=public -e PRIVATE_DISK=tmp_private -e FILESYSTEM_DISK=tmp_private
+    ;;
+*)
+    sed -n 3,11p "$0"; exit 1 ;;
+esac

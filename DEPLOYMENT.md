@@ -398,6 +398,53 @@ is writable by `www-data`.
 
 ---
 
+# Review copy on Vercel (free)
+
+A **look-and-click preview** for reviewers, not a home for the real site.
+Vercel runs PHP as short-lived serverless functions (the community
+`vercel-php` runtime) with no database and a read-only disk, so:
+
+| Works | Doesn't persist |
+| --- | --- |
+| Every public page, photos, packages, booking wizard, enquiries | Photo uploads in the admin fail (disk is read-only) |
+| Admin: bookings, calendar, sales & profit, settings, editing text | New invoice PDFs live in `/tmp` and can vanish after a few minutes idle |
+| Existing invoice PDFs download | Emails are only logged, never sent |
+
+The database is a free hosted **MySQL from Aiven** (no card). The app needs
+real MySQL — the finance dashboard uses `DATE_FORMAT` and double-booking
+protection relies on MySQL error 1062 — so SQLite or Postgres are not options.
+
+Files: `vercel.json`, `api/index.php` (points Laravel's caches at `/tmp`),
+`scripts/vercel`, `scripts/vercel-import.php`, and the `tmp_private` disk in
+`config/filesystems.php`.
+
+## 1. Accounts (once)
+
+1. **Aiven** — <https://aiven.io> → create a **free MySQL** service. From its
+   *Overview* page copy host, port, user and password into `.env.vercel`
+   (git-ignored), and download the **CA certificate** to `.vercel-ca.pem` in
+   the project root.
+2. **Vercel** — sign up free (Hobby), then in a terminal: `npx vercel login`.
+
+## 2. Copy the content and deploy
+
+```bash
+./scripts/vercel db       # tables + this machine's content; new random admin
+                          # passwords → ~/corememory-review-credentials.txt
+./scripts/vercel deploy   # bundle with photos and deploy to *.vercel.app
+```
+
+`db` replaces everything on the hosted database each time it runs — rerun it
+to refresh the preview from your local copy. Photos ship inside the deploy, so
+after adding photos locally run `deploy` again.
+
+The first deploy prints the URL. Put it in `.env.vercel` as `APP_URL=` and run
+`deploy` once more, so photo links and invoice links point at it.
+
+The preview is `SITE_NOINDEX=true` (kept out of Google) and `APP_DEBUG=false`.
+
+---
+
 # Alternative: Laravel Cloud (review / staging)
 
 Laravel Cloud runs the app from the GitHub repo with managed MySQL and object

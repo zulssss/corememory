@@ -1,0 +1,20 @@
+{
+    "$schema": "https://openapi.vercel.sh/vercel.json",
+    "framework": null,
+    "installCommand": "true",
+    "buildCommand": "true",
+    "outputDirectory": "public",
+    "regions": ["sin1"],
+    "functions": {
+        "api/index.php": {
+            "runtime": "vercel-php@0.8.0",
+            "memory": 1024,
+            "maxDuration": 30,
+            "excludeFiles": "{node_modules/**,tests/**,public/storage/**,public/fonts/**,public/images/**,public/build/assets/**,storage/app/private/livewire-tmp/**,storage/framework/testing/**,storage/logs/**}"
+        }
+    },
+    "routes": [
+        { "handle": "filesystem" },
+        { "src": "/(.*)", "dest": "/api/index.php" }
+    ]
+}

@@ -70,6 +70,20 @@ return [
             'throw' => false,
         ],
 
+        /*
+         * The Vercel review copy (see DEPLOYMENT.md). Vercel's filesystem is
+         * read-only except /tmp, so invoice PDFs and Livewire's temporary
+         * uploads go here. api/index.php copies the bundled invoices in on a
+         * cold start. /tmp lasts only as long as one server instance: fine for
+         * a review link, never for the real site.
+         */
+        'tmp_private' => [
+            'driver' => 'local',
+            'root' => '/tmp/corememory/private',
+            'throw' => false,
+            'report' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),

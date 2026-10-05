@@ -29,5 +29,8 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 
-# Laravel Cloud credentials, kept on this machine only — never committed.
-.env.cloud
+
+# Vercel review copy: credentials and the database CA, kept on this machine only.
+.env.vercel
+.vercel-ca.pem
+/.vercel
