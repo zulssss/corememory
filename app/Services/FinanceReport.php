@@ -423,12 +423,18 @@ class FinanceReport
                     ->selectRaw("DATE_FORMAT(issued_at, '%Y-%m') AS month, SUM(total_cents) AS total")
                     ->pluck('total', 'month');
 
+            // Each booking's costs land on its FIRST event date. Joining
+            // booking_dates directly would count a cost once per date row — and
+            // nikah + sanding on one day is two rows.
+            $firstDates = DB::table('booking_dates')
+                ->groupBy('booking_id')
+                ->selectRaw('booking_id, MIN(event_date) AS event_date');
+
             $costs = DB::table('booking_costs')
-                ->join('bookings', 'bookings.id', '=', 'booking_costs.booking_id')
-                ->join('booking_dates', 'booking_dates.booking_id', '=', 'bookings.id')
-                ->whereBetween('booking_dates.event_date', [$start->toDateString(), $end->toDateString()])
+                ->joinSub($firstDates, 'first_dates', 'first_dates.booking_id', '=', 'booking_costs.booking_id')
+                ->whereBetween('first_dates.event_date', [$start->toDateString(), $end->toDateString()])
                 ->groupBy('month')
-                ->selectRaw("DATE_FORMAT(booking_dates.event_date, '%Y-%m') AS month, SUM(booking_costs.amount_cents) AS total")
+                ->selectRaw("DATE_FORMAT(first_dates.event_date, '%Y-%m') AS month, SUM(booking_costs.amount_cents) AS total")
                 ->pluck('total', 'month');
 
             $labels = [];

@@ -6,6 +6,29 @@ return [
 
     'title' => 'Sales & profit',
 
+    'dashboard' => [
+        'subheading' => 'Sales & profit · :from – :to · :basis',
+    ],
+
+    'attention' => [
+        'heading' => 'Needs attention',
+        'pending' => 'New requests awaiting reply',
+        'pending_action' => 'Open requests',
+        'upcoming' => 'Events in the next 30 days',
+        'upcoming_action' => 'See the list',
+        'overdue' => 'Overdue invoices',
+        'overdue_action' => 'Open invoices',
+        'overdue_total' => ':total outstanding',
+        'clear' => 'All clear',
+    ],
+
+    'chart' => [
+        'revenue' => 'Revenue',
+        'costs' => 'Direct costs',
+        'profit' => 'Gross profit',
+        'in_period' => 'Shaded months are in the selected period.',
+    ],
+
     'basis' => [
         'label' => 'Revenue basis',
         'cash' => 'Cash — money received',
@@ -35,6 +58,8 @@ return [
         'average_booking' => 'Average booking',
         'conversion' => 'Enquiry to confirmed',
         'no_revenue' => 'No revenue in this period',
+        'costs_caption' => 'Event costs in this period',
+        'avg_booking_caption' => 'average booking',
     ],
 
     'widgets' => [

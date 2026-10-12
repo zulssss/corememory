@@ -8,13 +8,15 @@ use App\Enums\BookingStatus;
 use App\Models\Booking;
 use App\Models\Invoice;
 use App\Services\FinanceReport;
+use App\ValueObjects\Money;
 use BackedEnum;
 use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Pages\Page;
-use Filament\Schemas\Components\Section;
+use Filament\Panel;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Concerns\InteractsWithSchemas;
 use Filament\Schemas\Contracts\HasSchemas;
 use Filament\Schemas\Schema;
@@ -35,7 +37,9 @@ use UnitEnum;
  * active basis is printed next to every revenue figure. An owner should never
  * have to guess whether a number is money received or money invoiced.
  *
- * Owner-only: staff work bookings, not the books.
+ * It is also the admin's home page (/admin): the studio is two people who both
+ * run the books, so owner and staff alike land on their numbers. Invoices and
+ * Settings stay owner-only; this page only reads them.
  */
 class FinanceDashboard extends Page implements HasSchemas
 {
@@ -43,22 +47,42 @@ class FinanceDashboard extends Page implements HasSchemas
 
     protected string $view = 'filament.pages.finance-dashboard';
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBanknotes;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedHome;
 
-    protected static ?string $navigationLabel = 'Sales & profit';
+    protected static ?string $navigationLabel = 'Dashboard';
 
-    protected static string|UnitEnum|null $navigationGroup = 'Finance';
+    protected static string|UnitEnum|null $navigationGroup = null;
 
-    protected static ?int $navigationSort = 0;
+    // Above every resource, where Filament's own Dashboard used to sit.
+    protected static ?int $navigationSort = -2;
 
-    protected static ?string $title = 'Sales & profit';
+    protected static ?string $title = 'Dashboard';
 
     /** @var array<string, mixed> */
     public array $filters = [];
 
+    public const PRESETS = ['this_month', 'last_month', 'this_year', 'last_12_months'];
+
     public static function canAccess(): bool
     {
-        return auth()->user()?->hasAnyRole(['super_admin', 'admin']) ?? false;
+        return auth()->check();
+    }
+
+    /** The panel's home: /admin itself, as Filament's stock Dashboard was. */
+    public static function getRoutePath(Panel $panel): string
+    {
+        return '/';
+    }
+
+    public function getSubheading(): string
+    {
+        $report = $this->report;
+
+        return __('finance.dashboard.subheading', [
+            'from' => $report->from->format('j M Y'),
+            'to' => $report->to->format('j M Y'),
+            'basis' => $report->basisLabel(),
+        ]);
     }
 
     public function mount(): void
@@ -74,8 +98,8 @@ class FinanceDashboard extends Page implements HasSchemas
     {
         return $schema
             ->components([
-                Section::make()
-                    ->columns(3)
+                // A plain grid: the view wraps it in one card with the presets.
+                Grid::make(['default' => 1, 'sm' => 3])
                     ->schema([
                         DatePicker::make('from')
                             ->label(__('finance.period.from'))
@@ -107,17 +131,39 @@ class FinanceDashboard extends Page implements HasSchemas
     /** Quick presets, so the common periods are one click. */
     public function applyPreset(string $preset): void
     {
+        [$from, $to] = self::presetRange($preset);
+
+        $this->filters['from'] = $from->toDateString();
+        $this->filters['to'] = $to->toDateString();
+    }
+
+    /** @return array<int, CarbonImmutable> [from, to] */
+    private static function presetRange(string $preset): array
+    {
         $today = CarbonImmutable::today();
 
-        [$from, $to] = match ($preset) {
+        return match ($preset) {
             'last_month' => [$today->subMonth()->startOfMonth(), $today->subMonth()->endOfMonth()],
             'this_year' => [$today->startOfYear(), $today->endOfYear()],
             'last_12_months' => [$today->subMonths(11)->startOfMonth(), $today->endOfMonth()],
             default => [$today->startOfMonth(), $today->endOfMonth()],
         };
+    }
 
-        $this->filters['from'] = $from->toDateString();
-        $this->filters['to'] = $to->toDateString();
+    /** The preset the current dates match, so its button can show as chosen. */
+    public function getActivePresetProperty(): ?string
+    {
+        foreach (self::PRESETS as $preset) {
+            [$from, $to] = self::presetRange($preset);
+
+            // Date part only: the non-native picker can hold a time as well.
+            if (substr((string) ($this->filters['from'] ?? ''), 0, 10) === $from->toDateString()
+                && substr((string) ($this->filters['to'] ?? ''), 0, 10) === $to->toDateString()) {
+                return $preset;
+            }
+        }
+
+        return null;
     }
 
     /*
@@ -170,6 +216,24 @@ class FinanceDashboard extends Page implements HasSchemas
             ->get()
             ->sortBy(fn (Booking $booking) => $booking->primaryDate()?->event_date)
             ->values();
+    }
+
+    /**
+     * What needs doing, ignoring the period filter: a request waiting for a
+     * reply is waiting whatever month the owner happens to be looking at.
+     *
+     * @return array{pending: int, upcoming: int, overdue_count: int, overdue_total: string}
+     */
+    public function getAttentionProperty(): array
+    {
+        $overdue = $this->overdueInvoices;
+
+        return [
+            'pending' => Booking::query()->where('status', BookingStatus::Pending->value)->count(),
+            'upcoming' => $this->upcoming->count(),
+            'overdue_count' => $overdue->count(),
+            'overdue_total' => (new Money((int) $overdue->sum(fn (Invoice $i) => $i->outstanding()->cents)))->formatCompact(),
+        ];
     }
 
     public function getOverdueInvoicesProperty(): Collection

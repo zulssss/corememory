@@ -145,5 +145,5 @@ it('opens every admin page the role is allowed, and refuses the rest', function 
 })->with([
     'super admin' => ['super@corememory.test', []],
     'owner' => ['owner@corememory.test', []],
-    'staff' => ['staff@corememory.test', [InvoiceResource::class, FinanceDashboard::class, ManageSettings::class]],
+    'staff' => ['staff@corememory.test', [InvoiceResource::class, ManageSettings::class]],
 ]);

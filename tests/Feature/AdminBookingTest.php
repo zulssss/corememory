@@ -198,15 +198,16 @@ describe('permissions', function () {
     });
 });
 
-describe('finance is owner-only', function () {
-    it('keeps staff out of invoices and the finance dashboard', function () {
+describe('finance access', function () {
+    it('shows staff the dashboard but keeps them out of invoices', function () {
         $staff = User::factory()->create();
         $staff->assignRole('staff');
         $this->actingAs($staff);
 
-        // Staff work bookings, not the books.
+        // The studio is two people who both run the books, so the sales &
+        // profit dashboard is everyone's home page. Invoices stay owner-only.
         expect(InvoiceResource::canAccess())->toBeFalse()
-            ->and(FinanceDashboard::canAccess())->toBeFalse();
+            ->and(FinanceDashboard::canAccess())->toBeTrue();
     });
 
     it('lets the owner into invoices and the finance dashboard', function () {
