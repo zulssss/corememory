@@ -5,6 +5,9 @@
 #   ./scripts/vercel deploy   snapshot the public content, bundle it with the
 #                             photos, and deploy to *.vercel.app
 #
+# Extra arguments go to `vercel deploy` — e.g. `--temporary` for a deployment
+# made without logging in, which can be claimed into an account later.
+#
 # Needs `npx vercel login` once. See DEPLOYMENT.md → "Public preview on Vercel".
 #
 set -euo pipefail
@@ -13,7 +16,8 @@ cd "$(dirname "$0")/.."
 REPO="$PWD"
 BUILD="$HOME/.corememory/vercel/corememory"   # folder name = Vercel project name
 
-[ "${1:-}" = deploy ] || { sed -n 3,8p "$0"; exit 1; }
+[ "${1:-}" = deploy ] || { sed -n 3,11p "$0"; exit 1; }
+shift
 
 # Generated once and kept, so visitors' sessions survive a redeploy.
 touch .env.vercel
@@ -51,4 +55,5 @@ npx --yes vercel@latest deploy --prod --yes --cwd "$BUILD" \
     -e DB_CONNECTION=sqlite \
     -e CACHE_STORE=database -e SESSION_DRIVER=database -e QUEUE_CONNECTION=sync \
     -e QUEUE_CONVERSIONS_BY_DEFAULT=false -e MAIL_MAILER=log \
-    -e MEDIA_DISK=public -e FILESYSTEM_DISK=tmp_private
+    -e MEDIA_DISK=public -e FILESYSTEM_DISK=tmp_private \
+    "$@"
