@@ -65,7 +65,9 @@ class Booking extends Model
 
     public function dates(): HasMany
     {
-        return $this->hasMany(BookingDate::class)->orderBy('event_date');
+        // Within a day, insertion order — the wizard writes sessions morning
+        // to evening, so nikah reads before sanding everywhere they're listed.
+        return $this->hasMany(BookingDate::class)->orderBy('event_date')->orderBy('id');
     }
 
     public function addOns(): BelongsToMany
