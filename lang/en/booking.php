@@ -66,9 +66,10 @@ return [
 
         'add_another_date' => 'Add another date',
         'remove_date' => 'Remove',
-        'date_label_hint' => 'e.g. Nikah, Reception',
+        'date_label_hint' => 'Name this event — e.g. Nikah, Sanding',
         'choose_a_day' => 'Choose a day',
         'choose_a_session' => 'Choose a session',
+        'sessions_hint' => 'Pick more than one if you need to — e.g. nikah in the morning, sanding in the afternoon.',
         'date_incomplete' => 'Something is still missing for this date — tap it to finish.',
         'selected' => 'Selected',
         'choose' => 'Choose',

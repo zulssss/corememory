@@ -227,33 +227,113 @@ class BookingWizard extends Component
 
     public function selectDay(string $date): void
     {
-        $this->dates[$this->activeDate]['event_date'] = $date;
+        $rows = $this->dayRows($this->activeDate);
+        $head = $rows[0];
 
-        // Changing the day invalidates any slot already picked for it.
-        $this->dates[$this->activeDate]['session_slot'] = null;
+        // The day's first row carries the venue and label forward; every
+        // session picked for the old day is dropped — it may not exist on the
+        // new one.
+        $keep = [...$this->dates[$head], 'event_date' => $date, 'session_slot' => null];
+        $this->dates = array_values(array_diff_key($this->dates, array_flip($rows)));
+
+        // Already chosen as another date: open that one rather than making a
+        // second card for the same day.
+        $existing = array_search($date, array_column($this->dates, 'event_date'), true);
+
+        if ($existing !== false) {
+            $this->activeDate = (int) $existing;
+        } else {
+            array_splice($this->dates, $head, 0, [$keep]);
+            $this->activeDate = $head;
+        }
+
         $this->clashError = null;
-        $this->resetValidation("dates.{$this->activeDate}.event_date");
+        $this->resetValidation();
         $this->persist();
 
         // Next thing to do is pick a session, which sits below the calendar.
         $this->dispatch('wizard-reveal', target: 'sessions');
     }
 
+    /**
+     * Toggle a session on the active day.
+     *
+     * A Malay wedding is often nikah in the morning and sanding in the
+     * afternoon of the SAME day, so a day can hold several sessions. Each is
+     * its own row in $dates — exactly what booking_dates stores — so each
+     * keeps its own venue, and every rule downstream (availability, holds,
+     * the per-event deposit) already treats it as a separate event.
+     *
+     * Full Day covers all three sessions, so it is exclusive both ways.
+     */
     public function selectSlot(string $slot): void
     {
-        $this->dates[$this->activeDate]['session_slot'] = $slot;
+        $slot = SessionSlot::from($slot);
+        $rows = $this->dayRows($this->activeDate);
+        $head = $rows[0];
+
+        if (($this->dates[$head]['event_date'] ?? null) === null) {
+            return;
+        }
+
+        /** @var array<string, array> $chosen session value => row */
+        $chosen = [];
+        foreach ($rows as $i) {
+            if (filled($this->dates[$i]['session_slot'])) {
+                $chosen[$this->dates[$i]['session_slot']] = $this->dates[$i];
+            }
+        }
+
+        // New sessions start with the first session's venue: usually the
+        // same place, and when it isn't, editing beats retyping.
+        $template = [...$this->dates[$head], 'session_slot' => null];
+        $adding = ! isset($chosen[$slot->value]);
+
+        if ($slot->isFullDay()) {
+            $dayRows = [[...$template, 'session_slot' => $slot->value]];
+        } else {
+            unset($chosen[SessionSlot::FullDay->value]);
+
+            if ($adding) {
+                $chosen[$slot->value] = $chosen === []
+                    ? [...$template, 'session_slot' => $slot->value]
+                    : [...$template, 'session_slot' => $slot->value, 'label' => null];
+            } else {
+                unset($chosen[$slot->value]);
+            }
+
+            // Morning, afternoon, evening — the order the day happens in.
+            $dayRows = [];
+            foreach (SessionSlot::concrete() as $concrete) {
+                if (isset($chosen[$concrete->value])) {
+                    $dayRows[] = $chosen[$concrete->value];
+                }
+            }
+
+            // Deselecting the last session leaves the day chosen, sessionless.
+            $dayRows = $dayRows ?: [$template];
+        }
+
+        $this->dates = array_values(array_diff_key($this->dates, array_flip($rows)));
+        array_splice($this->dates, $head, 0, $dayRows);
+        $this->activeDate = $head;
+
         $this->clashError = null;
-        $this->resetValidation("dates.{$this->activeDate}.session_slot");
+        // Row indexes shift when a session is added or removed, so a warning
+        // keyed to the old index could land on the wrong session.
+        $this->resetValidation();
         $this->persist();
 
         // Then the venue, which only appears once a session is chosen.
-        $this->dispatch('wizard-reveal', target: 'venue');
+        if ($adding) {
+            $this->dispatch('wizard-reveal', target: 'venue');
+        }
     }
 
     public function addDate(): void
     {
         // A nikah and a reception are one booking, under one reference.
-        if (count($this->dates) < 4) {
+        if (count($this->dayGroups()) < 4) {
             $this->dates[] = $this->emptyDate();
             $this->activeDate = count($this->dates) - 1;
             $this->persist();
@@ -262,13 +342,14 @@ class BookingWizard extends Component
 
     public function removeDate(int $index): void
     {
-        if (count($this->dates) <= 1) {
+        if (count($this->dayGroups()) <= 1 || ! isset($this->dates[$index])) {
             return;
         }
 
-        unset($this->dates[$index]);
-        $this->dates = array_values($this->dates);
+        // A day goes with all of its sessions.
+        $this->dates = array_values(array_diff_key($this->dates, array_flip($this->dayRows($index))));
         $this->activeDate = 0;
+        $this->resetValidation();
         $this->persist();
     }
 
@@ -367,6 +448,38 @@ class BookingWizard extends Component
         return $this->package
             ? $this->package->availableAddOns()
             : collect();
+    }
+
+    /**
+     * The rows of $dates grouped by day, keyed by each day's first row.
+     * A row with no date yet is a day of its own.
+     *
+     * @return array<int, array<int, int>>
+     */
+    public function dayGroups(): array
+    {
+        $heads = [];
+        $groups = [];
+
+        foreach ($this->dates as $i => $date) {
+            $key = $date['event_date'] ?? "undated-{$i}";
+            $heads[$key] ??= $i;
+            $groups[$heads[$key]][] = $i;
+        }
+
+        return $groups;
+    }
+
+    /** @return array<int, int> the indexes of every row on the same day as $index */
+    public function dayRows(int $index): array
+    {
+        foreach ($this->dayGroups() as $rows) {
+            if (in_array($index, $rows, true)) {
+                return $rows;
+            }
+        }
+
+        return [$index];
     }
 
     /** Dates that are fully chosen — both a day and a slot. */

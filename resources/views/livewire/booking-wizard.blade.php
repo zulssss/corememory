@@ -86,28 +86,38 @@
                 <h1 tabindex="-1" data-step-heading class="text-statement font-medium text-ink outline-none">{{ __('booking.wizard.headline') }}</h1>
                 <p class="mt-4 max-w-measure text-body text-ink-muted">{{ __('booking.wizard.intro') }}</p>
 
-                {{-- Your chosen dates --}}
+                {{-- Your chosen dates — one card per DAY, however many sessions it holds --}}
+                @php $dayGroups = $this->dayGroups(); @endphp
                 <div class="mt-10 flex flex-col gap-4">
-                    @foreach ($dates as $index => $date)
+                    @foreach ($dayGroups as $head => $rows)
                         @php
-                            // Any warning on this date row — session, venue, city,
-                            // state — flags the whole row, so with several dates
-                            // the couple can see WHICH one is incomplete.
-                            $rowIncomplete = collect($errors->keys())
-                                ->contains(fn ($key) => str_starts_with($key, "dates.{$index}."));
+                            $date = $dates[$head];
+                            $isActive = in_array($activeDate, $rows, true);
+                            $sessionLabels = collect($rows)
+                                ->map(fn ($i) => $dates[$i]['session_slot'])
+                                ->filter()
+                                ->map(fn ($v) => SessionSlot::from($v)->label());
+
+                            // Any warning on any session of this day — session,
+                            // venue, city, state — flags the whole card, so with
+                            // several dates the couple can see WHICH one is
+                            // incomplete.
+                            $rowIncomplete = collect($errors->keys())->contains(
+                                fn ($key) => collect($rows)->contains(fn ($i) => str_starts_with($key, "dates.{$i}."))
+                            );
                         @endphp
-                        <div @class([
+                        <div wire:key="day-card-{{ $date['event_date'] ?? 'new-'.$head }}" @class([
                             'rule-all p-4 transition-colors',
                             'border-critical' => $rowIncomplete,
-                            'border-ink' => $activeDate === $index && ! $rowIncomplete,
+                            'border-ink' => $isActive && ! $rowIncomplete,
                         ])>
                             <div class="flex items-start justify-between gap-4">
-                                <button type="button" wire:click="focusDate({{ $index }})" class="text-left">
-                                    <x-micro-label>{{ __('booking.wizard.date_number', ['number' => $index + 1]) }}</x-micro-label>
+                                <button type="button" wire:click="focusDate({{ $head }})" class="text-left">
+                                    <x-micro-label>{{ __('booking.wizard.date_number', ['number' => $loop->iteration]) }}</x-micro-label>
                                     <p class="mt-1 text-body font-medium text-ink">
-                                        @if ($date['event_date'] && $date['session_slot'])
+                                        @if ($date['event_date'] && $sessionLabels->isNotEmpty())
                                             {{ \Carbon\CarbonImmutable::parse($date['event_date'])->translatedFormat('d M Y') }}
-                                            — {{ SessionSlot::from($date['session_slot'])->label() }}
+                                            — {{ $sessionLabels->implode(' + ') }}
                                         @elseif ($date['event_date'])
                                             {{ \Carbon\CarbonImmutable::parse($date['event_date'])->translatedFormat('d M Y') }}
                                             — <span class="text-ink-muted">{{ __('booking.wizard.choose_a_session') }}</span>
@@ -117,32 +127,25 @@
                                     </p>
                                 </button>
 
-                                @if (count($dates) > 1)
-                                    <button type="button" wire:click="removeDate({{ $index }})"
+                                @if (count($dayGroups) > 1)
+                                    <button type="button" wire:click="removeDate({{ $head }})"
                                             class="micro-label shrink-0 hover:text-critical">
                                         {{ __('booking.wizard.remove_date') }}
                                     </button>
                                 @endif
                             </div>
 
-                            @error("dates.{$index}.event_date")
+                            @error("dates.{$head}.event_date")
                                 <p role="alert" class="mt-2 text-body-sm text-critical">{{ $message }}</p>
                             @enderror
 
-                            @if ($rowIncomplete && $activeDate !== $index)
+                            @if ($rowIncomplete && ! $isActive)
                                 <p class="mt-2 text-body-sm text-critical">{{ __('booking.wizard.date_incomplete') }}</p>
-                            @endif
-
-                            @if (count($dates) > 1)
-                                <input type="text" wire:model.blur="dates.{{ $index }}.label"
-                                       placeholder="{{ __('booking.wizard.date_label_hint') }}"
-                                       aria-label="{{ __('booking.fields.label') }}"
-                                       class="mt-3 w-full border border-input-border bg-paper px-3 py-2 text-body-sm text-ink placeholder:text-ink-faint focus:border-ink">
                             @endif
                         </div>
                     @endforeach
 
-                    @if (count($dates) < 4)
+                    @if (count($dayGroups) < 4)
                         <button type="button" wire:click="addDate" class="micro-label self-start hover:text-ink">
                             + {{ __('booking.wizard.add_another_date') }}
                         </button>
@@ -208,29 +211,39 @@
                     </div>
                 </div>
 
-                {{-- Session slots for the chosen day --}}
+                {{-- Session slots for the chosen day — several may be picked --}}
+                @php
+                    $activeRows = $this->dayRows($activeDate);
+                    $chosenSlots = collect($activeRows)->map(fn ($i) => $dates[$i]['session_slot'] ?? null)->filter()->values()->all();
+                    $sessionRows = collect($activeRows)->filter(fn ($i) => filled($dates[$i]['session_slot'] ?? null))->values();
+                @endphp
                 @if ($chosenDay = ($dates[$activeDate]['event_date'] ?? null))
                     <div class="mt-10" data-wizard-section="sessions">
-                        <x-micro-label class="rule-b block pb-3">{{ __('booking.wizard.choose_a_session') }}</x-micro-label>
+                        <div class="rule-b flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 pb-3">
+                            <x-micro-label>{{ __('booking.wizard.choose_a_session') }}</x-micro-label>
+                            <span class="text-body-sm text-ink-muted">{{ __('booking.wizard.sessions_hint') }}</span>
+                        </div>
 
-                        <div class="mt-4 flex flex-col gap-3" role="radiogroup" aria-label="{{ __('booking.wizard.choose_a_session') }}">
+                        <div class="mt-4 flex flex-col gap-3" role="group" aria-label="{{ __('booking.wizard.choose_a_session') }}">
                             @foreach ($this->calendar[$chosenDay]['slots'] ?? [] as $slotValue => $state)
-                                @php $isSelected = ($dates[$activeDate]['session_slot'] ?? null) === $slotValue; @endphp
+                                @php $isSelected = in_array($slotValue, $chosenSlots, true); @endphp
 
                                 <button
                                     type="button"
-                                    role="radio"
-                                    aria-checked="{{ $isSelected ? 'true' : 'false' }}"
+                                    wire:key="slot-{{ $chosenDay }}-{{ $slotValue }}"
+                                    aria-pressed="{{ $isSelected ? 'true' : 'false' }}"
                                     wire:click="selectSlot('{{ $slotValue }}')"
-                                    @disabled(! $state->bookable)
+                                    @disabled(! $state->bookable && ! $isSelected)
                                     @class([
                                         'rule-all flex items-baseline justify-between gap-4 px-4 py-3.5 text-left transition-colors',
                                         'border-ink bg-ink text-paper' => $isSelected,
-                                        'cursor-not-allowed opacity-50' => ! $state->bookable,
+                                        'cursor-not-allowed opacity-50' => ! $state->bookable && ! $isSelected,
                                         'hover:border-ink' => $state->bookable && ! $isSelected,
                                     ])
                                 >
-                                    <span class="text-body-sm font-medium">{{ $state->label() }}</span>
+                                    <span class="text-body-sm font-medium">
+                                        <span aria-hidden="true" class="mr-2 inline-block w-3">{{ $isSelected ? '✓' : '' }}</span>{{ $state->label() }}
+                                    </span>
 
                                     {{-- Unavailable options stay visible WITH THEIR REASON
                                          rather than disappearing — the brief is explicit. --}}
@@ -245,30 +258,54 @@
                             @endforeach
                         </div>
 
-                        @error("dates.{$activeDate}.session_slot")
-                            <p role="alert" class="mt-3 text-body-sm text-critical">{{ $message }}</p>
-                        @enderror
+                        @foreach ($activeRows as $i)
+                            @error("dates.{$i}.session_slot")
+                                <p role="alert" class="mt-3 text-body-sm text-critical">{{ $message }}</p>
+                            @enderror
+                        @endforeach
                     </div>
                 @endif
 
-                {{-- Venue for this date --}}
-                @if ($dates[$activeDate]['session_slot'] ?? null)
-                    <div class="mt-8 grid gap-4 sm:grid-cols-3" data-wizard-section="venue">
-                        @foreach (['venue' => 'venue', 'city' => 'city', 'state' => 'state'] as $field => $key)
-                            @php $model = "dates.{$activeDate}.{$field}"; @endphp
-                            <label class="flex flex-col gap-1.5">
-                                <x-micro-label>{{ __('booking.fields.'.$key) }}</x-micro-label>
-                                <input type="text" wire:model.blur="{{ $model }}"
-                                       @if ($errors->has($model)) aria-invalid="true" aria-describedby="{{ $model }}-error" @endif
-                                       @class([
-                                           'border bg-paper px-3 py-2 text-body-sm text-ink focus:border-ink',
-                                           'border-critical' => $errors->has($model),
-                                           'border-input-border' => ! $errors->has($model),
-                                       ])>
-                                @error($model)
-                                    <span id="{{ $model }}-error" role="alert" class="text-body-sm text-critical">{{ $message }}</span>
-                                @enderror
-                            </label>
+                {{-- Venue — one per chosen session: the nikah is often at the
+                     masjid and the sanding at a hall. The second starts as a copy
+                     of the first. --}}
+                @if ($sessionRows->isNotEmpty())
+                    <div class="mt-8 flex flex-col gap-8" data-wizard-section="venue">
+                        @foreach ($sessionRows as $i)
+                            <div wire:key="venue-{{ $dates[$i]['event_date'] }}-{{ $dates[$i]['session_slot'] }}">
+                                @if ($sessionRows->count() > 1)
+                                    <p class="mb-3 text-body-sm font-medium text-ink">
+                                        {{ SessionSlot::from($dates[$i]['session_slot'])->labelWithTime() }}
+                                    </p>
+                                @endif
+
+                                <div class="grid gap-4 sm:grid-cols-3">
+                                    @foreach (['venue' => 'venue', 'city' => 'city', 'state' => 'state'] as $field => $key)
+                                        @php $model = "dates.{$i}.{$field}"; @endphp
+                                        <label class="flex flex-col gap-1.5">
+                                            <x-micro-label>{{ __('booking.fields.'.$key) }}</x-micro-label>
+                                            <input type="text" wire:model.blur="{{ $model }}"
+                                                   @if ($errors->has($model)) aria-invalid="true" aria-describedby="{{ $model }}-error" @endif
+                                                   @class([
+                                                       'border bg-paper px-3 py-2 text-body-sm text-ink focus:border-ink',
+                                                       'border-critical' => $errors->has($model),
+                                                       'border-input-border' => ! $errors->has($model),
+                                                   ])>
+                                            @error($model)
+                                                <span id="{{ $model }}-error" role="alert" class="text-body-sm text-critical">{{ $message }}</span>
+                                            @enderror
+                                        </label>
+                                    @endforeach
+                                </div>
+
+                                {{-- With more than one event, a name tells them apart. --}}
+                                @if (count($dates) > 1)
+                                    <input type="text" wire:model.blur="dates.{{ $i }}.label"
+                                           placeholder="{{ __('booking.wizard.date_label_hint') }}"
+                                           aria-label="{{ __('booking.fields.label') }}"
+                                           class="mt-3 w-full border border-input-border bg-paper px-3 py-2 text-body-sm text-ink placeholder:text-ink-faint focus:border-ink">
+                                @endif
+                            </div>
                         @endforeach
                     </div>
                 @endif

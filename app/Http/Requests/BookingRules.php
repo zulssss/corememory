@@ -39,7 +39,8 @@ class BookingRules
     public static function dates(): array
     {
         return [
-            'dates' => ['required', 'array', 'min:1', 'max:4'],
+            // Up to 4 days, each with up to 3 sessions — one row per session.
+            'dates' => ['required', 'array', 'min:1', 'max:12'],
             'dates.*.event_date' => ['required', 'date'],
             'dates.*.session_slot' => ['required', new Enum(SessionSlot::class)],
             'dates.*.label' => ['nullable', 'string', 'max:60'],
